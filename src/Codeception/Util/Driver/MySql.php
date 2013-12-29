@@ -24,6 +24,7 @@ class MySql extends Db
         $query = "select %s from `%s` $where";
         $params = array();
         foreach ($criteria as $k => $v) {
+            $k = $this->getQuotedName($k);
             if ($v === null) {
                 $params[] = "$k IS ?";
             } else {
@@ -33,5 +34,10 @@ class MySql extends Db
         $params = implode(' AND ', $params);
 
         return sprintf($query, $column, $table, $params);
+    }
+
+    public function getQuotedName($name)
+    {
+        return '`' . $name . '`';
     }
 }

@@ -95,8 +95,8 @@ Same annotation can be used in Cest classes.
 
 ## Cest Classes
 
-In case you want to get a class-like structure for your Cepts, instead of plain PHP, you can use Cest format.
-It is very simple and is fully compatible with Cept scenarios. It means If you feel like your test is long enough and you want to split it - you can easily move it into class. 
+In case you want to get a class-like structure for your Cepts, instead of plain PHP, you can use the Cest format.
+It is very simple and is fully compatible with Cept scenarios. It means if you feel like your test is long enough and you want to split it - you can easily move it into classes. 
 
 You can start Cest file by running the command:
 
@@ -162,6 +162,87 @@ As you see, Cest class have no parent like `\Codeception\TestCase\Test` or `PHPU
 
 Also you can define `_failed` method in Cest class which will be called if test finished with `error` or fail.
 
+### Before/After Annotations
+
+*added in 1.7.0*
+
+You can control Cest files with annotations. You can use `@guy` annotation to pass Guy class different then set via config. This is quite useful if you want to pass a StepObject there (see below).
+
+``` php
+<?php
+/**
+ * @guy WebGuy\AdminSteps
+ */
+class AdminCest {
+
+    function banUser(WebGuy\AdminSteps $I)
+    {
+        // ...
+    }
+
+}
+?>
+```
+The guy annotation can be added to method DocBlock as well.
+
+You can control execution flow with `@before` and `@after` annotations. You may move common actions into protected (non-test) methods and invoke them before or after the test method by putting them into annotations.
+
+``` php
+<?php
+class ModeratorCest {
+
+    protected function login(WebGuy $I)
+    {
+        $I->amOnPage('/login');
+        $I->fillField('Username', 'miles');
+        $I->fillField('Password', 'davis');
+        $I->click('Login');
+    }
+
+    /**
+     * @before login
+     */
+    function banUser(WebGuy $I)
+    {
+        $I->amOnPage('/users/charlie-parker');
+        $I->see('Ban', '.button');
+        $I->click('Ban');        
+    }
+}
+?>
+```
+
+You can use `@before` and `@after` for included functions also. But you can't have multiple annotations in one method.
+
+### Depends Annotation
+
+* new in 1.8 *
+
+With `@depends` annotation you can specify a test that should be passed before current one. If the test fails, current test will be skipped.
+You should pass a method name of a test you are relying on.
+
+``` php
+<?php
+class ModeratorCest {
+
+    public function login(WebGuy $I)
+    {
+        // logs moderator in
+    }
+
+    /**
+     * @depends login
+     */
+    function banUser(WebGuy $I)
+    {
+        // bans user
+    }
+}
+?>
+```
+
+Hint: `@depends` can be combined with `@before`.
+
 ## Refactoring
 
 As test base growth they will require refactoring, sharing common variables and behaviors. The classical example for this is `login` action which will be called for maybe every test of your test suite. It's wise to make it written one time and use it in all tests. 
@@ -177,8 +258,8 @@ It's pretty obvious that for such cases you can use your own PHP classes to defi
     public static function logMeIn($I)
     {
         $I->amOnPage('/login');
-        $I->fillField('username', 'jon');
-        $I->fillField('password','coltrane');
+        $I->fillField('username', self::$username);
+        $I->fillField('password', self::$password);
         $I->click('Enter');
     }
 }
@@ -225,7 +306,7 @@ Locators are represented with public static properties:
 <?php
 class LoginPage
 {
-    const URL = '/login';
+    static $URL = '/login';
 
     static $usernameField = '#mainForm #username';
     static $passwordField = '#mainForm input[name=password]';
@@ -240,7 +321,7 @@ And this is how this page object can be used in a test:
 <?php
 $I = new WebGuy($scenario);
 $I->wantTo('login to site');
-$I->amOnPage(LoginPage::URL);
+$I->amOnPage(LoginPage::$URL);
 $I->fillField(LoginPage::$usernameField, 'bill evans');
 $I->fillField(LoginPage::$passwordField, 'debby');
 $I->click(LoginPage::$loginButton);
@@ -266,7 +347,7 @@ This generated `UserLoginPage` class looks almost the same way as LoginPage clas
 class UserLoginPage
 {
     // include url of current page
-    const URL = '/login';
+    static $URL = '/login';
 
     /**
      * @var WebGuy;
@@ -350,10 +431,10 @@ class MemberSteps extends \WebGuy
     function login($name, $password)
     {
         $I = $this;
-        $I->amOnPage(LoginPage::URL);
-        $I->fillField(LoginPage::$usernameField, $name);
-        $I->fillField(LoginPage::$passwordField, $password);
-        $I->click(LoginPage::$loginButton);
+        $I->amOnPage(\LoginPage::$URL);
+        $I->fillField(\LoginPage::$usernameField, $name);
+        $I->fillField(\LoginPage::$passwordField, $password);
+        $I->click(\LoginPage::$loginButton);
     }
 }
 ?>
@@ -371,6 +452,96 @@ $I->login('bill evans','debby');
 As you see, StepObject class looks much simpler and readable then classical PageObject.
 As an alternative to StepObject we could use methods of `WebHelper` class. In a helper we do not have an access to `$I` object itself,
 thus it's better to use Helpers should be used to implement new actions, and StepObjects to combine common scenarios.
+
+## Environments
+
+*added in 1.8*
+
+For cases where you need to run tests over different configurations you can define different config environments.
+The most typical use cases are: run acceptance tests in different browsers, or run database tests over different database engines.
+
+Let's demonstrate usage of environments for the browsers case.
+
+We add new lines into `acceptance.suite.yml`:
+
+``` yaml
+class_name: WebGuy
+modules:
+    enabled:
+        - WebDriver
+        - WebHelper
+    config:
+        WebDriver:
+            url: 'http://127.0.0.1:8000/'
+            browser: 'firefox'
+
+env:
+    phantom:
+         modules:
+            config:
+                WebDriver:
+                    browser: 'phantomjs'
+
+    chrome:
+         modules:
+            config:
+                WebDriver:
+                    browser: 'chrome'
+
+    firefox:
+        # nothing changes
+```
+
+At first sight this trees of config looks ugly, but it is the most clean way of implementation.
+Basically you can define different environments inside the `env` root, name them (`phantom`, `chrome`),
+and then you can redefine any configuration parameter that was previously set.
+
+You can easily switch those configs by running tests with `--env` option. To run tests only in phanrom js you pass `--env phantom option`
+
+ ``` bash
+ php codecept.phar run acceptance --env phantom
+ ```
+
+ To run tests in all 3 browsers, just list all the environments
+
+ ```
+ php codecept.phar run acceptance --env phantom --env chrome --env firefox
+ ```
+
+and tests will be executed 3 times, each time in a different browser.
+
+Depending on environment you may choose which tests are to be executed.
+For example, you might need some tests that will be executed only in Firefox, and few tests only in Chrome.
+
+Desired environment for test can be specified eaither with `@env` annotation for Test and Cest formats
+
+``` php
+<?php
+/**
+ * This test will be executed only in firefox and phantom environments
+ *
+ * @env chrome
+ * @env phantom
+ * /
+function webkitOnlyTest(WebGuy $I)
+{
+  // I do something...
+}
+?>
+```
+
+For Cept you should use `$scenario->env()`:
+
+``` php
+<?php
+$scenario->env('firefox');
+$scenario->env('phantom');
+$scenario->env(array('phantom', 'firefox'));
+?>
+```
+
+This way you can easily control what tests will be executed for which browsers.
+
 
 ## Conclusion
 

@@ -6,6 +6,7 @@ use Behat\Mink\Driver\GoutteDriver;
 use Codeception\Util\Connector\Goutte;
 use Guzzle\Http\Client;
 use Codeception\Exception\TestRuntime;
+use Codeception\TestCase;
 use Symfony\Component\BrowserKit\Request;
 
 /**
@@ -60,13 +61,18 @@ class PhpBrowser extends \Codeception\Util\Mink implements \Codeception\Util\Fra
     );
 
     /**
+     * @var \Codeception\Util\Connector\Goutte
+     */
+    protected $goutte;
+
+    /**
      * @var \Guzzle\Http\Client
      */
     public $guzzle;
 
     public function _initialize() {
-        $client = new Goutte();
-        $driver = new \Behat\Mink\Driver\GoutteDriver($client);
+        $this->goutte = new Goutte();
+        $driver = new \Behat\Mink\Driver\GoutteDriver($this->goutte);
 
         // build up a Guzzle friendly list of configuration options
         // passed in both from our defaults and the respective
@@ -82,9 +88,13 @@ class PhpBrowser extends \Codeception\Util\Mink implements \Codeception\Util\Fra
             $curl_config['ssl.certificate_authority'] = false;
         }
 
-        $client->setClient($this->guzzle = new Client('', $curl_config));
+        $this->goutte->setClient($this->guzzle = new Client('', $curl_config));
         $this->session = new \Behat\Mink\Session($driver);
         parent::_initialize();
+    }
+
+    public function _before(TestCase $test) {
+        $this->goutte->resetAuth();
     }
 
     public function submitForm($selector, $params) {
@@ -92,23 +102,29 @@ class PhpBrowser extends \Codeception\Util\Mink implements \Codeception\Util\Fra
 
         if ($form === null)
             throw new TestRuntime("Form with selector: \"$selector\" was not found on given page.");
-
-        $fields = $this->session->getPage()->findAll('css', $selector.' input');
+        /** @var \Behat\Mink\Element\NodeElement[] $fields */
+        $fields = $this->session->getPage()->findAll('css', $selector . ' input:enabled, ' . $selector . ' input[type=hidden]');
         $url = '';
 
         foreach ($fields as $field) {
-            $url .= sprintf('%s=%s',$field->getAttribute('name'), $field->getAttribute('value')).'&';
+            $fieldKey = $field->getAttribute('name');
+            $value = array_key_exists($fieldKey, $params) ? $params[$fieldKey] : $field->getValue();
+            $url .= sprintf('%s=%s', $fieldKey, $value) . '&';
         }
 
-        $fields = $this->session->getPage()->findAll('css', $selector.' textarea');
+        $fields = $this->session->getPage()->findAll('css', $selector . ' textarea:enabled');
         foreach ($fields as $field) {
-            $url .= sprintf('%s=%s',$field->getAttribute('name'), $field->getValue()).'&';
+            $fieldKey = $field->getAttribute('name');
+            $value = array_key_exists($fieldKey, $params) ? $params[$fieldKey] : $field->getValue();            
+            $url .= sprintf('%s=%s',$fieldKey, $value) . '&';
         }
 
-        $fields = $this->session->getPage()->findAll('css', $selector.' select');
+        $fields = $this->session->getPage()->findAll('css', $selector . ' select:enabled');
         foreach ($fields as $field) {
-   		    $url .= sprintf('%s=%s',$field->getAttribute('name'), $field->getValue()).'&';
-   	 }
+            $fieldKey = $field->getAttribute('name');
+            $value = array_key_exists($fieldKey, $params) ? $params[$fieldKey] : $field->getValue();            
+       	    $url .= sprintf('%s=%s',$fieldKey, $value) . '&';
+        }
 
         $url .= '&'.http_build_query($params);
         parse_str($url, $params);
@@ -118,17 +134,21 @@ class PhpBrowser extends \Codeception\Util\Mink implements \Codeception\Util\Fra
         $this->call($url, $method, $params);
     }
 
-    public function sendAjaxPostRequest($uri, $params = array()) {
-        $this->session->setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-        $this->call($uri, 'POST', $params);
-        $this->debug($this->session->getPage()->getContent());
-        $this->session->setRequestHeader('X-Requested-With', '');
+    public function sendAjaxPostRequest($uri, $params = array())
+    {
+        $this->sendAjaxRequest('POST', $uri, $params);
     }
 
-    public function sendAjaxGetRequest($uri, $params = array()) {
-        $this->session->setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+    public function sendAjaxGetRequest($uri, $params = array())
+    {
         $query = $params ? '?'. http_build_query($params) : '';
-        $this->call($uri.$query, 'GET', $params);
+        $this->sendAjaxRequest('GET', $uri.$query, $params);
+    }
+
+    public function sendAjaxRequest($method, $uri, $params = array())
+    {
+        $this->session->setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        $this->call($uri, $method, $params);
         $this->debug($this->session->getPage()->getContent());
         $this->session->setRequestHeader('X-Requested-With', '');
     }
@@ -169,8 +189,8 @@ class PhpBrowser extends \Codeception\Util\Mink implements \Codeception\Util\Fra
      * ?>
      * ```
      *
-     * Not recommended this command too be used on regular basis.
-     * If Codeception lacks important Guzzle Client methods implement then and submit patches.
+     * It is not recommended to use this command on a regular basis.
+     * If Codeception lacks important Guzzle Client methods, implement them and submit patches.
      *
      * @param callable $function
      */
@@ -191,16 +211,20 @@ class PhpBrowser extends \Codeception\Util\Mink implements \Codeception\Util\Fra
         return $headers[$header];
     }
 
-	protected function call($uri, $method = 'get', $params = array())
-	{
-		if (strpos($uri,'#')) $uri = substr($uri,0,strpos($uri,'#'));
+    protected function call($uri, $method = 'get', $params = array())
+    {
+	if (strpos($uri,'#')) $uri = substr($uri,0,strpos($uri,'#'));
         $browser = $this->session->getDriver()->getClient();
-
-		$browser->request($method, $uri, $params);
+        if ($browser instanceof Goutte && $method == 'get' && !empty($params)) {
+            $uri .= '?' . http_build_query($params);
+            $browser->request($method, $uri, array());
+        } else {
+            $browser->request($method, $uri, $params);
+        }
         $this->debugPageInfo();
-	}
+    }
 
-	public function _failed(\Codeception\TestCase $test, $fail) {
+    public function _failed(\Codeception\TestCase $test, $fail) {
 		$fileName = str_replace('::','-',$test->getFileName());
 		file_put_contents(\Codeception\Configuration::logDir().basename($fileName).'.page.fail.html', $this->session->getPage()->getContent());
 	}
@@ -216,4 +240,21 @@ class PhpBrowser extends \Codeception\Util\Mink implements \Codeception\Util\Fra
         $this->debugSection('Status', $this->session->getStatusCode());
     }
 
+    public function seeCheckboxIsChecked($checkbox)
+    {
+        $node = $this->findField($checkbox);
+        if (!$node) {
+            $this->fail(", checkbox not found");
+        }
+        $this->assertEquals('checked', $node->getAttribute('checked'));
+    }
+
+    public function dontSeeCheckboxIsChecked($checkbox)
+    {
+        $node = $this->findField($checkbox);
+        if (!$node) {
+            $this->fail(", checkbox not found");
+        }
+        $this->assertNull($node->getAttribute('checked'));
+    }
 }

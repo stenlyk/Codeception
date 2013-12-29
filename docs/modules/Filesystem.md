@@ -96,11 +96,16 @@ Checks If opened file doesn't contain `text` in it
 ``` php
 <?php
 $I->openFile('composer.json');
-$I->seeInThisFile('codeception/codeception');
+$I->dontSeeInThisFile('codeception/codeception');
 ?>
 ```
 
  * param $text
+
+
+### getName
+
+__not documented__
 
 
 ### openFile

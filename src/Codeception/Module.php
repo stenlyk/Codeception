@@ -3,6 +3,10 @@
 namespace Codeception;
 
 use Codeception\PHPUnit\AssertWrapper;
+use Codeception\Exception\ModuleConfig;
+use Codeception\Util\Debug;
+use Symfony\Component\Console\Output\ConsoleOutput;
+use Symfony\Component\Console\Output\OutputInterface;
 
 abstract class Module extends AssertWrapper
 {
@@ -40,32 +44,33 @@ abstract class Module extends AssertWrapper
 
     protected $config = array();
 
-    protected $defaultConfig = array();
+    protected $backupConfig = array();
 
     protected $requiredFields = array();
 
-    public function __construct($config = array())
+    public function __construct($config = null)
     {
-        if (!empty($config)) {
+        $this->backupConfig = $this->config;
+        if (is_array($config)) {
             $this->_setConfig($config);
         }
     }
 
     public function _setConfig($config)
     {
-        $this->config = $this->defaultConfig = array_merge($this->config, $config);
+        $this->config = $this->backupConfig = array_merge($this->config, $config);
         $this->validateConfig();
     }
 
     public function _reconfigure($config)
     {
-        $this->config = array_merge($this->defaultConfig, $config);
+        $this->config =  array_merge($this->backupConfig, $config);
         $this->validateConfig();
     }
 
     public function _resetConfig()
     {
-        $this->config = $this->defaultConfig;
+        $this->config = $this->backupConfig;
     }
 
     protected function validateConfig()
@@ -75,9 +80,18 @@ abstract class Module extends AssertWrapper
             throw new Exception\ModuleConfig(
                 get_class($this),
                 "\nOptions: " . implode(', ', $this->requiredFields) . " are required\n
-                Update configuration and set all required fields\n\n"
+                Please, update the configuration and set all the required fields\n\n"
             );
         }
+    }
+
+    public function getName()
+    {
+        $module = get_class($this);
+         if (preg_match('@\\\\([\w]+)$@', $module, $matches)) {
+             $module = $matches[1];
+         }
+         return $module;
     }
 
     public function _hasRequiredFields()
@@ -132,7 +146,7 @@ abstract class Module extends AssertWrapper
 
     protected function debug($message)
     {
-        $this->debugStack[] = $message;
+        Debug::debug($message);
     }
 
     protected function debugSection($title, $message)
@@ -140,26 +154,14 @@ abstract class Module extends AssertWrapper
         $this->debug("[$title] $message");
     }
 
-    public function _clearDebugOutput()
+    protected function hasModule($name)
     {
-        $this->debugStack = array();
-    }
-
-    public function _getDebugOutput()
-    {
-        $debugStack = $this->debugStack;
-        $this->_clearDebugOutput();
-        return $debugStack;
+        return SuiteManager::hasModule($name);
     }
 
     protected function getModules()
     {
         return SuiteManager::$modules;
-    }
-
-    protected function hasModule($name)
-    {
-        return SuiteManager::hasModule($name);
     }
 
     protected function getModule($name)

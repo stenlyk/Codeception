@@ -5,7 +5,7 @@
 
 This module allows you to run functional tests for Laravel 4.
 Module is very fresh and should be improved with Laravel testing capabilities.
-Please try it and leave your feedbacks. If you want to maintin it - connect Codeception team.
+Please try it and leave your feedbacks. If you want to maintain it - connect Codeception team.
 
 Uses 'bootstrap/start.php' to launch.
 
@@ -319,6 +319,11 @@ $I->fillField("//input[@type='text']", "Hello World!");
 
  * param $field
  * param $value
+
+
+### getName
+
+__not documented__
 
 
 ### grabFromCurrentUrl
@@ -673,11 +678,32 @@ We emulate that click by running this ajax request manually.
 
 ``` php
 <?php
-$I->sendAjaxPostRequest('/updateSettings', array('notifications' => true); // POST
-$I->sendAjaxGetRequest('/updateSettings', array('notifications' => true); // GET
+$I->sendAjaxPostRequest('/updateSettings', array('notifications' => true)); // POST
+$I->sendAjaxGetRequest('/updateSettings', array('notifications' => true)); // GET
 
 ```
 
+ * param $uri
+ * param $params
+
+
+### sendAjaxRequest
+
+
+If your page triggers an ajax request, you can perform it manually.
+This action sends an ajax request with specified method and params.
+
+Example:
+
+You need to perform an ajax request specifying the HTTP method.
+
+``` php
+<?php
+$I->sendAjaxRequest('PUT', /posts/7', array('title' => 'new title');
+
+```
+
+ * param $method
  * param $uri
  * param $params
 

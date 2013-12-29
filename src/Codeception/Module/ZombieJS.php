@@ -8,6 +8,11 @@ namespace Codeception\Module;
  * For links, buttons, fields you can use names/values/ids of elements.
  * For form fields you can use input[name=fieldname] notation.
  *
+ * <div class="alert alert-info">
+ * To use this module with Composer you need <em>"behat/mink-zombie-driver": "1.1.*"</em> package.
+ * This module is considered <strong>deprecated</strong> and will be replaced with WebDriver module.
+ * </div>
+ *
  * ## Status
  *
  * * Maintainer: **synchrone**
@@ -23,16 +28,12 @@ namespace Codeception\Module;
  * * Install node.js by following instructions from the official site: http://nodejs.org/.
  * * Install npm (node package manager) by following instructions from the http://npmjs.org/.
  * * Install zombie.js with npm:
- * ``` $ npm install -g zombie@0.13.0 @```
- * Note: Behat/Mink states that there are compatibility issues with zombie > 0.13, and their manual
- * says to install version 0.12.15, BUT it has some bugs, so you'd rather install 0.13
+ * ``` $ npm install -g zombie@1```
  *
  * After installing npm and zombie.js, you’ll need to add npm libs to your **NODE_PATH**. The easiest way to do this is to add:
  *
  * ``` export NODE_PATH="/PATH/TO/NPM/node_modules" ```
  * into your **.bashrc**.
- *
- * Also note that this module requires php5-http PECL extension to parse returned headers properly
  *
  * Don't forget to turn on Db repopulation if you are using database.
  *
@@ -100,15 +101,6 @@ class ZombieJS extends \Codeception\Util\MinkJS
 
     public function _failed(\Codeception\TestCase $test, $error) {
         $this->_after($test);
-    }
-
-    public function _after(\Codeception\TestCase $test) {
-        //that call does not really terminate node process
-        //@see https://github.com/symfony/symfony/issues/5499
-        $this->session->stop();
-
-        //so we kill it ourselves
-        exec('killall '.pathinfo($this->server->getNodeBin(),PATHINFO_BASENAME).' > /dev/null 2>&1');
     }
 
     public function _getUrl() {

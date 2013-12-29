@@ -17,7 +17,7 @@ class GeneratePageObject extends Base
 %s %sPage
 {
     // include url of current page
-    const URL = '';
+    static \$URL = '';
 
     /**
      * Declare UI map for this page here. CSS or XPath allowed.
@@ -32,7 +32,7 @@ class GeneratePageObject extends Base
      */
      public static function route(\$param)
      {
-        return static::URL.\$param;
+        return static::\$URL.\$param;
      }
 
 %s
@@ -50,6 +50,9 @@ EOF;
         \$this->%s = \$I;
     }
 
+    /**
+     * @return %s
+     */
     public static function of(%s \$I)
     {
         return new static(\$I);
@@ -93,10 +96,10 @@ EOF;
         $ns = $this->getNamespaceString($conf['namespace'].'\\'.$classname);
 
         $filename = $suite
-            ? $this->pathToSuitePageObject($conf, $class)
-            : $this->pathToGlobalPageObject($conf, $class);
+            ? $this->pathToSuitePageObject($conf, $classname)
+            : $this->pathToGlobalPageObject($conf, $classname);
 
-        if ($suite) $this->createActions($conf);
+        if ($suite) $this->createActions($conf, $classname);
 
         $res = $this->save($filename, sprintf($this->template, $ns, 'class', $classname, $this->actions));
 
@@ -112,7 +115,7 @@ EOF;
         $path = $this->buildPath($config['paths']['tests'].'/_pages/', $class);
         $filename = $this->completeSuffix($class, 'Page');
         $this->introduceAutoloader($config['paths']['tests'].DIRECTORY_SEPARATOR.$config['settings']['bootstrap'],'Page','_pages');
-        return  $path.DIRECTORY_SEPARATOR.$filename;
+        return  $path.$filename;
     }
 
     protected function pathToSuitePageObject($config, $class)
@@ -120,14 +123,14 @@ EOF;
         $path = $this->buildPath($config['path'].'/_pages/', $class);
         $filename = $this->completeSuffix($class, 'Page');
         $this->introduceAutoloader($config['path'].DIRECTORY_SEPARATOR.$config['bootstrap'],'Page','_pages');
-        return  $path.DIRECTORY_SEPARATOR.$filename;
+        return  $path.$filename;
     }
 
-    protected function createActions($conf)
+    protected function createActions($conf, $pageobject)
     {
-        $class = $conf['class_name'];
+        $guyClass = $conf['class_name'];
         $guy = lcfirst($conf['class_name']);
-        $this->actions = sprintf($this->actionsTemplate, $class, $guy, $class, $guy, $class);
+        $this->actions = sprintf($this->actionsTemplate, $guyClass, $guy, $guyClass, $guy, $pageobject.'Page', $guyClass);
     }
 
 }

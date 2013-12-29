@@ -154,21 +154,10 @@ $I->click('Logout', '#nav');
 ### dontSee
 
 
-Check if current page doesn't contain the text specified.
-Specify the css selector to match only specific region.
+ * param string $text
+ * param string $selector
 
-Examples:
-
-```php
-<?php
-$I->dontSee('Login'); // I can suppose user is already logged in
-$I->dontSee('Sign Up','h1'); // I can suppose it's not a signup page
-$I->dontSee('Sign Up','//body/h1'); // with XPath
-?>
-```
-
- * param $text
- * param null $selector
+ * return void
 
 
 ### dontSeeCheckboxIsChecked
@@ -367,6 +356,11 @@ $I->fillField("//input[@type='text']", "Hello World!");
 
  * param $field
  * param $value
+
+
+### getName
+
+__not documented__
 
 
 ### grabCookie
@@ -713,11 +707,32 @@ We emulate that click by running this ajax request manually.
 
 ``` php
 <?php
-$I->sendAjaxPostRequest('/updateSettings', array('notifications' => true); // POST
-$I->sendAjaxGetRequest('/updateSettings', array('notifications' => true); // GET
+$I->sendAjaxPostRequest('/updateSettings', array('notifications' => true)); // POST
+$I->sendAjaxGetRequest('/updateSettings', array('notifications' => true)); // GET
 
 ```
 
+ * param $uri
+ * param $params
+
+
+### sendAjaxRequest
+
+
+If your page triggers an ajax request, you can perform it manually.
+This action sends an ajax request with specified method and params.
+
+Example:
+
+You need to perform an ajax request specifying the HTTP method.
+
+``` php
+<?php
+$I->sendAjaxRequest('PUT', /posts/7', array('title' => 'new title');
+
+```
+
+ * param $method
  * param $uri
  * param $params
 

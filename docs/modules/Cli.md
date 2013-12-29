@@ -23,6 +23,11 @@ Checks that output from latest command doesn't contain text
 
 
 
+### getName
+
+__not documented__
+
+
 ### runShellCommand
 
 
@@ -37,3 +42,8 @@ Executes a shell command
 Checks that output from last executed command contains text
 
  * param $text
+
+
+### seeShellOutputMatches
+
+__not documented__

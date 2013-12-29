@@ -8,6 +8,10 @@ namespace Codeception\Module;
  *
  * On test failure the browser window screenshot will be saved to log directory
  *
+ * <div class="alert alert-info">
+ * One day this module will be replaced with WebDriver module.
+ * </div>
+ *
  * ## Installation
  *
  * Download [Selenium2 WebDriver](http://code.google.com/p/selenium/downloads/list?q=selenium-server-standalone-2)
@@ -84,7 +88,6 @@ class Selenium2 extends MinkJS
     public function _failed(\Codeception\TestCase $test, $error) {
         $this->_saveScreenshot(\Codeception\Configuration::logDir().basename($test->getFileName()).'.fail.png');
         $this->debug("Screenshot was saved into 'log' dir");
-        $this->session->stop();
     }
 
     public function _afterStep(\Codeception\Step $step) {

@@ -57,4 +57,130 @@ class RestTest extends \PHPUnit_Framework_TestCase
         $this->setExpectedException('PHPUnit_Framework_AssertionFailedError', 'Response does not have required data');
         $this->module->grabDataFromJsonResponse('address.street');
     }
+
+    public function testValidJson()
+    {
+        $this->module->response = '{"xxx": "yyy"}';
+        $this->module->seeResponseIsJson();
+        $this->module->response = '{"xxx": "yyy", "zzz": ["a","b"]}';
+        $this->module->seeResponseIsJson();
+        $this->module->seeResponseEquals($this->module->response);
+    }
+
+    public function testInvalidJson()
+    {
+        $this->setExpectedException('PHPUnit_Framework_ExpectationFailedException');
+        $this->module->response = '{xxx = yyy}';
+        $this->module->seeResponseIsJson();
+    }
+    public function testValidXml()
+    {
+        $this->module->response = '<xml></xml>';
+        $this->module->seeResponseIsXml();
+        $this->module->response = '<xml><name>John</name></xml>';
+        $this->module->seeResponseIsXml();
+        $this->module->seeResponseEquals($this->module->response);
+    }
+
+    public function testInvalidXml()
+    {
+        $this->setExpectedException('PHPUnit_Framework_ExpectationFailedException');
+        $this->module->response = '<xml><name>John</surname></xml>';
+        $this->module->seeResponseIsXml();
+    }
+
+    public function testSeeInJson()
+    {
+        $this->module->response = '{"ticket": {"title": "Bug should be fixed", "user": {"name": "Davert"}, "labels": null}}';
+        $this->module->seeResponseIsJson();
+        $this->module->seeResponseContainsJson(array('name' => 'Davert'));
+        $this->module->seeResponseContainsJson(array('user' => array('name' => 'Davert')));
+        $this->module->seeResponseContainsJson(array('ticket' => array('title' => 'Bug should be fixed')));
+        $this->module->seeResponseContainsJson(array('ticket' => array('user' => array('name' => 'Davert'))));
+        $this->module->seeResponseContainsJson(array('ticket' => array('labels' => null)));
+    }
+
+    public function testArrayJson()
+    {
+        $this->module->response = '[{"id":1,"title": "Bug should be fixed"},{"title": "Feature should be implemented","id":2}]';
+        $this->module->seeResponseContainsJson(array('id' => 1));
+    }
+
+    public function testDontSeeInJson()
+    {
+        $this->module->response = '{"ticket": {"title": "Bug should be fixed", "user": {"name": "Davert"}}}';
+        $this->module->seeResponseIsJson();
+        $this->module->dontSeeResponseContainsJson(array('name' => 'Davet'));
+        $this->module->dontSeeResponseContainsJson(array('user' => array('name' => 'Davet')));
+        $this->module->dontSeeResponseContainsJson(array('user' => array('title' => 'Bug should be fixed')));
+    }
+
+    public function testApplicationJsonIncludesJsonAsContent()
+    {
+        $this->module->haveHttpHeader('Content-Type', 'application/json');
+        $this->module->sendPOST('/', array('name' => 'john'));
+        /** @var $request \Symfony\Component\BrowserKit\Request  **/
+        $request = $this->module->client->getRequest();
+        $this->assertContains('application/json', $request->getServer());
+        $server = $request->getServer();
+        $this->assertEquals('application/json', $server['HTTP_Content-Type']);
+        $this->assertJson($request->getContent());
+        $this->assertEmpty($request->getParameters());
+    }
+
+    public function testGetApplicationJsonNotIncludesJsonAsContent()
+    {
+        $this->module->haveHttpHeader('Content-Type', 'application/json');
+        $this->module->sendGET('/', array('name' => 'john'));
+        /** @var $request \Symfony\Component\BrowserKit\Request  **/
+        $request = $this->module->client->getRequest();
+        $this->assertNull($request->getContent());
+        $this->assertContains('john', $request->getParameters());
+    }
+
+    public function testUrlIsFull()
+    {
+        $this->module->sendGET('/api/v1/users');
+        /** @var $request \Symfony\Component\BrowserKit\Request  **/
+        $request = $this->module->client->getRequest();
+        $this->assertEquals('http://localhost/api/v1/users',$request->getUri());
+    }
+
+    public function testSeeHeaders()
+    {
+        $response = new \Symfony\Component\BrowserKit\Response("", 200, array(
+            'Cache-Control' => array('no-cache', 'no-store'),
+            'Content_Language' => 'en-US'
+        ));
+        $this->module->client->mockResponse($response);
+        $this->module->sendGET('/');
+        $this->module->seeHttpHeader('Cache-Control');
+        $this->module->seeHttpHeader('content_language','en-US');
+        $this->module->seeHttpHeader('Content-Language','en-US');
+        $this->module->dontSeeHttpHeader('Content-Language','en-RU');
+        $this->module->dontSeeHttpHeader('Content-Language1');
+        $this->module->seeHttpHeaderOnce('Content-Language');
+        \Codeception\Util\Debug::debug($this->module->grabHttpHeader('Cache-Control', false));
+        $this->assertEquals('en-US', $this->module->grabHttpHeader('Content-Language'));
+        $this->assertEquals('no-cache', $this->module->grabHttpHeader('Cache-Control'));
+        $this->assertEquals(array('no-cache', 'no-store'), $this->module->grabHttpHeader('Cache-Control', false));
+
+    }
+    
+    public function testSeeHeadersOnce()
+    {
+        $this->shouldFail();
+        $response = new \Symfony\Component\BrowserKit\Response("", 200, array(
+            'Cache-Control' => array('no-cache', 'no-store'),
+        ));
+        $this->module->client->mockResponse($response);
+        $this->module->sendGET('/');
+        $this->module->seeHttpHeaderOnce('Cache-Control');
+    }
+
+    protected function shouldFail()
+    {
+        $this->setExpectedException('PHPUnit_Framework_AssertionFailedError');
+    }
+
 }

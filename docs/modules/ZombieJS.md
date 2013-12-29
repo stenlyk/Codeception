@@ -8,6 +8,11 @@ Note, all methods take CSS selectors to fetch elements.
 For links, buttons, fields you can use names/values/ids of elements.
 For form fields you can use input[name=fieldname] notation.
 
+<div class="alert alert-info">
+To use this module with Composer you need <em>"behat/mink-zombie-driver": "1.1.*"</em> package.
+This module is considered <strong>deprecated</strong> and will be replaced with WebDriver module.
+</div>
+
 ## Status
 
 * Maintainer: **synchrone**
@@ -23,16 +28,12 @@ In order to talk with zombie.js server, you should install and configure zombie.
 * Install node.js by following instructions from the official site: http://nodejs.org/.
 * Install npm (node package manager) by following instructions from the http://npmjs.org/.
 * Install zombie.js with npm:
-``` $ npm install -g zombie@0.13.0  * ```
-Note: Behat/Mink states that there are compatibility issues with zombie > 0.13, and their manual
-says to install version 0.12.15, BUT it has some bugs, so you'd rather install 0.13
+``` $ npm install -g zombie@1```
 
 After installing npm and zombie.js, you’ll need to add npm libs to your **NODE_PATH**. The easiest way to do this is to add:
 
 ``` export NODE_PATH="/PATH/TO/NPM/node_modules" ```
 into your **.bashrc**.
-
-Also note that this module requires php5-http PECL extension to parse returned headers properly
 
 Don't forget to turn on Db repopulation if you are using database.
 
@@ -180,21 +181,10 @@ Clicks with right button on link or button or any node found by CSS or XPath
 ### dontSee
 
 
-Check if current page doesn't contain the text specified.
-Specify the css selector to match only specific region.
+ * param string $text
+ * param string $selector
 
-Examples:
-
-```php
-<?php
-$I->dontSee('Login'); // I can suppose user is already logged in
-$I->dontSee('Sign Up','h1'); // I can suppose it's not a signup page
-$I->dontSee('Sign Up','//body/h1'); // with XPath
-?>
-```
-
- * param $text
- * param null $selector
+ * return void
 
 
 ### dontSeeCheckboxIsChecked
@@ -398,6 +388,11 @@ $I->fillField("//input[@type='text']", "Hello World!");
 Moves focus to link or button or any node found by CSS or XPath
 
  * param $el
+
+
+### getName
+
+__not documented__
 
 
 ### grabCookie

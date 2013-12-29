@@ -15,10 +15,13 @@ require_once('controllers.php');
 $urls = array(
     '/' => 'index',
     '/info' => 'info',
+    '/cookies' => 'cookies',
+    '/search.*' => 'search',
     '/login' => 'login',
     '/redirect' => 'redirect',
     '/facebook\??.*' => 'facebookController',
-    '/form/(field|select|checkbox|file|textarea|hidden|complex|button|radio|select_multiple|empty|popup)(#)?' => 'form'
+    '/form/(field|select|checkbox|file|textarea|hidden|complex|button|radio|select_multiple|empty|popup)(#)?' => 'form',
+    '/articles\??.*' => 'articles'
 );
 
 glue::stick($urls);

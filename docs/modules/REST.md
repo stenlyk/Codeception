@@ -94,6 +94,11 @@ Opposite to seeResponseContainsJson
  * param array $json
 
 
+### getName
+
+__not documented__
+
+
 ### grabDataFromJsonResponse
 
 
@@ -165,6 +170,22 @@ its value, asserting that are there
  * param $value
 
 
+### seeHttpHeaderOnce
+
+
+Checks that http response header is received only once.
+HTTP RFC2616 allows multiple response headers with the same name.
+You can check that you didn't accidentally sent the same header twice.
+
+``` php
+<?php
+$I->seeHttpHeaderOnce('Cache-Control');
+?>>
+```
+
+ * param $name
+
+
 ### seeResponseCodeIs
 
 
@@ -223,6 +244,14 @@ This is done with json_last_error function.
 
 
 
+### seeResponseIsXml
+
+
+Checks whether last response was valid XML.
+This is done with libxml_get_last_error function.
+
+
+
 ### sendDELETE
 
 
@@ -242,6 +271,15 @@ Sends a GET request to given uri.
  * param array $params
 
 
+### sendHEAD
+
+
+Sends a HEAD request to given uri.
+
+ * param $url
+ * param array $params
+
+
 ### sendLINK
 
 
@@ -253,6 +291,15 @@ Sends LINK request to given uri.
  * link http://tools.ietf.org/html/rfc2068#section-19.6.2.4
 
  * author samva.ua@gmail.com
+
+
+### sendOPTIONS
+
+
+Sends an OPTIONS request to given uri.
+
+ * param $url
+ * param array $params
 
 
 ### sendPATCH
