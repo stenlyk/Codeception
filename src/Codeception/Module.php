@@ -2,14 +2,13 @@
 
 namespace Codeception;
 
-use Codeception\PHPUnit\AssertWrapper;
-use Codeception\Exception\ModuleConfig;
 use Codeception\Util\Debug;
-use Symfony\Component\Console\Output\ConsoleOutput;
-use Symfony\Component\Console\Output\OutputInterface;
+use Codeception\Util\Shared\Asserts;
 
-abstract class Module extends AssertWrapper
+abstract class Module
 {
+    use Asserts;
+
     /**
      * By setting it to false module wan't inherit methods of parent class.
      *
@@ -37,8 +36,6 @@ abstract class Module extends AssertWrapper
      * @var array
      */
     public static $aliases = array();
-
-    protected $debugStack = array();
 
     protected $storage = array();
 
@@ -85,7 +82,7 @@ abstract class Module extends AssertWrapper
         }
     }
 
-    public function getName()
+    public function _getName()
     {
         $module = get_class($this);
          if (preg_match('@\\\\([\w]+)$@', $module, $matches)) {
@@ -151,6 +148,9 @@ abstract class Module extends AssertWrapper
 
     protected function debugSection($title, $message)
     {
+        if (is_array($message) or is_object($message)) {
+            $message = stripslashes(json_encode($message));
+        }
         $this->debug("[$title] $message");
     }
 

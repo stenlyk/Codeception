@@ -23,9 +23,9 @@ namespace Codeception\Module;
  * Supported but not tested.
  *
  * * MSSQL
- * * Orcale
+ * * Oracle
  *
- * Connection is done by database Drivers, which are stored in Codeception\Util\Driver namespace.
+ * Connection is done by database Drivers, which are stored in Codeception\Lib\Driver namespace.
  * Check out drivers if you get problems loading dumps and cleaning databases.
  *
  * ## Status
@@ -69,11 +69,12 @@ namespace Codeception\Module;
  *
  */
 
-use Codeception\Util\Driver\Db as Driver;
+use Codeception\Lib\Driver\Db as Driver;
 use Codeception\Exception\Module as ModuleException;
 use Codeception\Exception\ModuleConfig as ModuleConfigException;
+use Codeception\Configuration as Configuration;
 
-class Db extends \Codeception\Module implements \Codeception\Util\DbInterface
+class Db extends \Codeception\Module implements \Codeception\Lib\Interfaces\Db
 {
 
     /**
@@ -95,7 +96,7 @@ class Db extends \Codeception\Module implements \Codeception\Util\DbInterface
 	protected $populated = false;
 
     /**
-     * @var \Codeception\Util\Driver\Db
+     * @var \Codeception\Lib\Driver\Db
      */
     public $driver;
     protected $insertedIds = array();
@@ -106,14 +107,14 @@ class Db extends \Codeception\Module implements \Codeception\Util\DbInterface
     {
         if ($this->config['dump'] && ($this->config['cleanup'] or ($this->config['populate']))) {
 
-            if (!file_exists(getcwd() . DIRECTORY_SEPARATOR . $this->config['dump'])) {
+            if (!file_exists(Configuration::projectDir() . $this->config['dump'])) {
                 throw new ModuleConfigException(
                     __CLASS__,
                     "\nFile with dump doesn't exist.
                     Please, check path for sql file: " . $this->config['dump']
                 );
             }
-            $sql = file_get_contents(getcwd() . DIRECTORY_SEPARATOR . $this->config['dump']);
+            $sql = file_get_contents(Configuration::projectDir() . $this->config['dump']);
             $sql = preg_replace('%/\*(?!!\d+)(?:(?!\*/).)*\*/%s', "", $sql);
             $this->sql = explode("\n", $sql);
         }
@@ -139,8 +140,6 @@ class Db extends \Codeception\Module implements \Codeception\Util\DbInterface
         if ($this->config['cleanup'] && !$this->populated) {
             $this->cleanup();
             $this->loadDump();
-        } else {
-            $this->removeInserted();
         }
         parent::_before($test);
     }
@@ -148,6 +147,7 @@ class Db extends \Codeception\Module implements \Codeception\Util\DbInterface
     public function _after(\Codeception\TestCase $test)
     {
         $this->populated = false;
+        $this->removeInserted();
         parent::_after($test);
     }
 
@@ -216,18 +216,20 @@ class Db extends \Codeception\Module implements \Codeception\Util\DbInterface
         $this->debugSection('Query', $query);
 
         $sth = $this->driver->getDbh()->prepare($query);
-        if (!$sth) \PHPUnit_Framework_Assert::fail("Query '$query' can't be executed.");
-
+        if (!$sth) {
+            $this->fail("Query '$query' can't be executed.");
+        }
 	    $i = 1;
         foreach ($data as $val) {
             $sth->bindValue($i, $val);
             $i++;
         }
         $res = $sth->execute();
-        if (!$res) $this->fail(sprintf("Record with %s couldn't be inserted into %s", json_encode($data), $table));
+        if (!$res) {
+            $this->fail(sprintf("Record with %s couldn't be inserted into %s", json_encode($data), $table));
+        }
 
         $lastInsertId = (int) $this->driver->lastInsertId($table);
-
         $this->insertedIds[] = array('table' => $table, 'id' => $lastInsertId);
 
         return $lastInsertId;
@@ -251,7 +253,9 @@ class Db extends \Codeception\Module implements \Codeception\Util\DbInterface
         $this->debugSection('Query', $query, json_encode($criteria));
 
         $sth = $this->driver->getDbh()->prepare($query);
-        if (!$sth) \PHPUnit_Framework_Assert::fail("Query '$query' can't be executed.");
+        if (!$sth) {
+            $this->fail("Query '$query' can't be executed.");
+        }
 
         $sth->execute(array_values($criteria));
         return $sth->fetchColumn();

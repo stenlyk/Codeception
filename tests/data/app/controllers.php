@@ -24,6 +24,18 @@ class redirect {
     }
 }
 
+class redirect2 {
+    function GET() {
+        include __DIR__.'/view/redirect2.php';
+    }
+}
+
+class redirect3 {
+    function GET() {
+        header('Refresh:0;url=/info');
+    }
+}
+
 class login {
 
     function GET($matches) {
@@ -56,7 +68,14 @@ class cookies {
         data::set('form', $_POST);
         include __DIR__.'/view/cookies.php';
     }
+}
 
+class cookiesHeader {
+    public function GET()
+    {
+        header("Set-Cookie: a=b;Path=/;");
+        include __DIR__.'/view/index.php';
+    }
 }
 
 class facebookController {

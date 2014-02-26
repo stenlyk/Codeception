@@ -11,7 +11,7 @@ class RestTest extends \PHPUnit_Framework_TestCase
 
     public function setUp() {
         $this->module = new \Codeception\Module\REST();
-        $connector = new \Codeception\Util\Connector\Universal();
+        $connector = new \Codeception\Lib\Connector\Universal();
         $connector->setIndex(\Codeception\Configuration::dataDir().'/rest/index.php');
         $this->module->client = $connector;
         $this->module->_before(Stub::makeEmpty('\Codeception\TestCase\Cest'));
@@ -100,6 +100,15 @@ class RestTest extends \PHPUnit_Framework_TestCase
         $this->module->seeResponseContainsJson(array('ticket' => array('labels' => null)));
     }
 
+    public function testSeeInJsonCollection()
+    {
+        $this->module->response = '[{"user":"Blacknoir","age":27,"tags":["wed-dev","php"]},{"user":"John Doe","age":27,"tags":["web-dev","java"]}]';
+        $this->module->seeResponseIsJson();
+        $this->module->seeResponseContainsJson(array('tags' => array('web-dev', 'java')));
+        $this->module->seeResponseContainsJson(array('user' => 'John Doe', 'age' => 27));
+    }
+
+
     public function testArrayJson()
     {
         $this->module->response = '[{"id":1,"title": "Bug should be fixed"},{"title": "Feature should be implemented","id":2}]';
@@ -123,7 +132,7 @@ class RestTest extends \PHPUnit_Framework_TestCase
         $request = $this->module->client->getRequest();
         $this->assertContains('application/json', $request->getServer());
         $server = $request->getServer();
-        $this->assertEquals('application/json', $server['HTTP_Content-Type']);
+        $this->assertEquals('application/json', $server['HTTP_CONTENT_TYPE']);
         $this->assertJson($request->getContent());
         $this->assertEmpty($request->getParameters());
     }

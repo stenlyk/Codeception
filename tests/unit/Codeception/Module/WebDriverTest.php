@@ -3,9 +3,9 @@
 use Codeception\Util\Stub;
 
 require_once 'tests/data/app/data.php';
-require_once __DIR__ . '/TestsForMink.php';
+require_once __DIR__ . '/TestsForBrowsers.php';
 
-class WebDriverTest extends TestsForMink
+class WebDriverTest extends TestsForBrowsers
 {
     /**
      * @var \Codeception\Module\WebDriver
@@ -323,6 +323,24 @@ class WebDriverTest extends TestsForMink
     {
         $this->module->amOnPage('/');
         $this->module->pauseExecution();
+    }
+
+    // Issue https://github.com/Codeception/Codeception/pull/875
+    public function testFillPasswordOnFormSubmit()
+    {
+        $this->module->amOnPage('/form/complex');
+        $this->module->submitForm('form', array(
+           'password' => '123456'
+        ));
+        $form = data::get('form');
+        $this->assertEquals('123456', $form['password']);
+    }
+
+    public function testEmptyFormSubmit()
+    {
+        $this->shouldFail();
+        $this->module->amOnPage('/form/complex');
+        $this->module->submitForm('form111', array());
     }
 
 }

@@ -10,7 +10,7 @@ class RefactorAddNamespaceTest extends BaseCommandRunner
 
     public function testBasic()
     {
-        $this->execute(array('namespace' => 'MiddleEarth', '--force' => true));
+        $this->execute(array('namespace' => 'MiddleEarth', '--silent' => true));
         $this->assertContains('adds namespaces to your Helper and Guy classes and Cepts', $this->output);
         
         $config = $this->log[0];
@@ -23,7 +23,7 @@ class RefactorAddNamespaceTest extends BaseCommandRunner
         $this->assertRegExp('~'.\Codeception\Configuration::helpersDir().'.*?Helper~', (string)$helper['filename']);
         
         // log[2] is helper, log[3] ... are helpers too
-        $cept = $this->log[7];
+        $cept = $this->log[8];
         $this->assertRegExp('~<?php use MiddleEarth\\\\.*Guy~', $cept['content']);
         $this->assertIsValidPhp($cept['content']);
     }

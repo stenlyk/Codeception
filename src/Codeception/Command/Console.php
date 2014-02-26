@@ -2,9 +2,9 @@
 
 namespace Codeception\Command;
 
-use Codeception\AbstractGuy;
+use Codeception\Actor;
 use Codeception\Codecept;
-use Codeception\CodeceptionEvents;
+use Codeception\Events;
 use Codeception\Configuration;
 use Codeception\Event\SuiteEvent;
 use Codeception\Event\TestEvent;
@@ -16,6 +16,11 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 
+/**
+ * Try to execute test commands in run-time. You may try commands before writing the test.
+ *
+ * `codecept console acceptance` - starts acceptance suite environment. If you use WebDriver you can manipulate browser with Codeception commands.
+ */
 class Console extends Base
 {
     protected $test;
@@ -70,22 +75,22 @@ class Console extends Base
         $output->writeln("<info>type 'actions' to see all available actions for this suite</info>");
 
         $suiteEvent = new SuiteEvent($this->suite, $this->codecept->getResult(), $settings);
-        $dispatcher->dispatch(CodeceptionEvents::SUITE_BEFORE, $suiteEvent);
+        $dispatcher->dispatch(Events::SUITE_BEFORE, $suiteEvent);
 
-        $dispatcher->dispatch(CodeceptionEvents::TEST_PARSED, new TestEvent($this->test));
-        $dispatcher->dispatch(CodeceptionEvents::TEST_BEFORE, new TestEvent($this->test));
+        $dispatcher->dispatch(Events::TEST_PARSED, new TestEvent($this->test));
+        $dispatcher->dispatch(Events::TEST_BEFORE, new TestEvent($this->test));
 
         $output->writeln("\n\n\$I = new {$settings['class_name']}(\$scenario);");
         $scenario->run();
         $this->executeCommands($output, $I, $settings['bootstrap']);
 
-        $dispatcher->dispatch(CodeceptionEvents::TEST_AFTER, new TestEvent($this->test));
-        $dispatcher->dispatch(CodeceptionEvents::SUITE_AFTER, new SuiteEvent($this->suite));
+        $dispatcher->dispatch(Events::TEST_AFTER, new TestEvent($this->test));
+        $dispatcher->dispatch(Events::SUITE_AFTER, new SuiteEvent($this->suite));
 
         $output->writeln("<info>Bye-bye!</info>");
     }
 
-    protected function executeCommands(OutputInterface $output, AbstractGuy $I, $bootstrap)
+    protected function executeCommands(OutputInterface $output, Actor $I, $bootstrap)
     {
         $dialog = $this->getHelperSet()->get('dialog');
 

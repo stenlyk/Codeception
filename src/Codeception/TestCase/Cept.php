@@ -2,8 +2,9 @@
 
 namespace Codeception\TestCase;
 
-use Codeception\CodeceptionEvents;
+use Codeception\Events;
 use Codeception\Event\TestEvent;
+use Codeception\Parser;
 use Codeception\Scenario;
 use Codeception\Step;
 use Codeception\TestCase;
@@ -18,6 +19,7 @@ class Cept extends TestCase implements ScenarioDriven
     protected $features = array();
     protected $bootstrap = null;
     protected $stopped = false;
+    protected $parser;
 
     public function __construct(EventDispatcher $dispatcher, array $data = array(), $dataName = '')
     {
@@ -32,6 +34,7 @@ class Cept extends TestCase implements ScenarioDriven
         $this->name      = $data['name'];
         $this->testFile  = $data['file'];
         $this->scenario  = new Scenario($this);
+        $this->parser    = new Parser($this->scenario);
 
         if (isset($data['bootstrap']) && file_exists($data['bootstrap'])) {
             $this->bootstrap = $data['bootstrap'];
@@ -50,6 +53,9 @@ class Cept extends TestCase implements ScenarioDriven
 
     public function getScenarioText($format = 'text')
     {
+        $code = $this->getRawBody();
+        $this->parser->parseFeature($code);
+        $this->parser->parseSteps($code);
         if ($format == 'html') {
             return $this->scenario->getHtml();
         }
@@ -67,22 +73,19 @@ class Cept extends TestCase implements ScenarioDriven
     }
 
     public function preload()
-    {
-        /** @noinspection PhpUnusedLocalVariableInspection */
-        $scenario = $this->scenario;
-        if ($this->bootstrap) {
-            /** @noinspection PhpIncludeInspection */
-            require $this->bootstrap;
-        }
-        /** @noinspection PhpIncludeInspection */
-        require $this->testFile;
+    { 
+        $this->parser->prepareToRun($this->getRawBody());
+        $this->fire(Events::TEST_PARSED, new TestEvent($this));
+    }
 
-        $this->fire(CodeceptionEvents::TEST_PARSED, new TestEvent($this));
+    public function getRawBody()
+    {
+        return file_get_contents($this->testFile);
     }
 
     public function testCodecept()
     {
-        $this->fire(CodeceptionEvents::TEST_BEFORE, new TestEvent($this));
+        $this->fire(Events::TEST_BEFORE, new TestEvent($this));
 
         $scenario = $this->scenario;
         $scenario->run();
@@ -93,6 +96,6 @@ class Cept extends TestCase implements ScenarioDriven
         /** @noinspection PhpIncludeInspection */
         require $this->testFile;
 
-        $this->fire(CodeceptionEvents::TEST_AFTER, new TestEvent($this));
+        $this->fire(Events::TEST_AFTER, new TestEvent($this));
     }
 }
