@@ -4,12 +4,10 @@ namespace Codeception\Coverage\Subscriber;
 use Codeception\Events;
 use Codeception\Configuration;
 use Codeception\Coverage\SuiteSubscriber;
-use Codeception\Coverage\Shared\C3Collect;
 use Codeception\Event\StepEvent;
 use Codeception\Event\SuiteEvent;
 use Codeception\Event\TestEvent;
 use Codeception\Exception\RemoteException;
-use Codeception\Lib\Interfaces\Web;
 
 /**
  * When collecting code coverage data from local server HTTP requests are sent to c3.php file.
@@ -33,8 +31,10 @@ class LocalServer extends SuiteSubscriber
 
     protected $suiteName;
     protected $c3Access = [
-        'method' => "GET",
-        'header' => ''
+        'http' => [
+            'method' => "GET",
+            'header' => ''
+        ]
     ];
 
     /**
@@ -51,7 +51,7 @@ class LocalServer extends SuiteSubscriber
 
     protected function isEnabled()
     {
-        return $this->module and !$this->settings['remote'];
+        return $this->module and !$this->settings['remote'] and $this->settings['enabled'];
     }
 
     public function beforeSuite(SuiteEvent $e)
@@ -78,7 +78,6 @@ class LocalServer extends SuiteSubscriber
                 '
             );
         }
-
     }
 
     public function beforeTest(TestEvent $e)
@@ -104,14 +103,14 @@ class LocalServer extends SuiteSubscriber
             return;
         }
 
-        if (!file_exists(Configuration::logDir() . 'c3tmp/codecoverage.serialized')) {
-            if (file_exists(Configuration::logDir() . 'c3tmp/error.txt')) {
-                throw new \RuntimeException(file_get_contents(Configuration::logDir() . 'c3tmp/error.txt'));
+        if (!file_exists(Configuration::outputDir() . 'c3tmp/codecoverage.serialized')) {
+            if (file_exists(Configuration::outputDir() . 'c3tmp/error.txt')) {
+                throw new \RuntimeException(file_get_contents(Configuration::outputDir() . 'c3tmp/error.txt'));
             }
             return;
         }
 
-        $contents = file_get_contents(Configuration::logDir() . 'c3tmp/codecoverage.serialized');
+        $contents = file_get_contents(Configuration::outputDir() . 'c3tmp/codecoverage.serialized');
         $coverage = @unserialize($contents);
         if ($coverage === false) {
             return;
@@ -122,8 +121,14 @@ class LocalServer extends SuiteSubscriber
     protected function c3Request($action)
      {
          $this->addC3AccessHeader(self::COVERAGE_HEADER, 'remote-access');
-         $context = stream_context_create(array('http' => $this->c3Access));
-         $contents = file_get_contents($this->module->_getUrl() . '/c3/report/' . $action, false, $context);
+         $context = stream_context_create($this->c3Access);
+         $c3Url = $this->settings['c3_url'] ? $this->settings['c3_url'] : $this->module->_getUrl();
+         $contents = file_get_contents($c3Url . '/c3/report/' . $action, false, $context);
+
+         $okHeaders = array_filter($http_response_header, function($h) { return preg_match('~^HTTP(.*?)\s200~', $h); });
+         if (empty($okHeaders)) {
+             throw new RemoteException("Request was not successful. See response header: " . $http_response_header[0]);
+         }
          if ($contents === false) {
              $this->getRemoteError($http_response_header);
          }
@@ -160,8 +165,18 @@ class LocalServer extends SuiteSubscriber
 
      protected function addC3AccessHeader($header, $value)
      {
-         $this->c3Access['header'] .= "$header: $value\r\n";
+         $headerString = "$header: $value\r\n";
+         if (strpos($this->c3Access['http']['header'], $headerString) === false) {
+             $this->c3Access['http']['header'] .= $headerString;
+         }
      }
 
+    protected function applySettings($settings)
+    {
+        parent::applySettings($settings);
+        if (isset($settings['coverage']['remote_context_options'])) {
+            $this->c3Access = array_replace_recursive($this->c3Access, $settings['coverage']['remote_context_options']);
+        }
+    }
 
 }

@@ -1,8 +1,6 @@
 <?php
 namespace Codeception\Lib\Driver;
 
-use Codeception\Exception\Module as ModuleException;
-
 class Db
 {
     protected $dbh;
@@ -42,6 +40,8 @@ class Db
                 return new Oracle($dsn, $user, $password);
             case 'sqlsrv':
                 return new SqlSrv($dsn, $user, $password);
+            case 'oci':
+                return new Oci($dsn, $user, $password);
             default:
                 return new Db($dsn, $user, $password);
         }
@@ -109,7 +109,7 @@ class Db
         }
     }
 
-    public function insert($tableName, array $data)
+    public function insert($tableName, array &$data)
     {
         $columns = array_map(
             array($this, 'getQuotedName'),
@@ -124,15 +124,19 @@ class Db
         );
     }
 
-    public function select($column, $table, array $criteria)
-    {
-        $where  = $criteria ? "where %s" : '';
-        $query  = "select %s from `%s` $where";
+    public function select($column, $table, array &$criteria) {
+        $where = $criteria ? "where %s" : '';
+        $query = "select %s from `%s` $where";
         $params = array();
         foreach ($criteria as $k => $v) {
-            $params[] = "$k = ? ";
+            $k = $this->getQuotedName($k);
+            if ($v === null) {
+                $params[] = "$k IS ?";
+            } else {
+                $params[] = "$k = ?";
+            }
         }
-        $params = implode('AND ', $params);
+        $params = implode(' AND ', $params);
 
         return sprintf($query, $column, $table, $params);
     }

@@ -31,6 +31,10 @@ class Filter
         $this->filter = $this->phpCodeCoverage->filter();
     }
 
+    /**
+     * @param \PHP_CodeCoverage $phpCoverage
+     * @return Filter
+     */
     public static function setup(\PHP_CodeCoverage $phpCoverage)
     {
         self::$c3 = new self($phpCoverage);
@@ -71,6 +75,7 @@ class Filter
                 }
             }
         }
+
         if (isset($coverage['whitelist']['exclude'])) {
             foreach ($coverage['whitelist']['exclude'] as $fileOrDir) {
                 $finder = strpos($fileOrDir, '*') === false
@@ -138,6 +143,14 @@ class Filter
         }
         $finder->ignoreVCS(true)->files();
         return $finder;
+    }
+
+    /**
+     * @return \PHP_CodeCoverage_Filter
+     */
+    public function getFilter()
+    {
+        return $this->filter;
     }
 
 }

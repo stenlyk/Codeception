@@ -1,6 +1,7 @@
 # Sequence Module
 
-**For additional reference, please review the [source](https://github.com/Codeception/Codeception/tree/master/src/Codeception/Module/Sequence.php)**
+**For additional reference, please review the [source](https://github.com/Codeception/Codeception/tree/2.0/src/Codeception/Module/Sequence.php)**
+
 
 Sequence solves data cleanup issue in alternative way.
 Instead cleaning up the database between tests,
@@ -47,6 +48,5 @@ for ($i = 0; $i<10; $i++) {
 ```
 
 
-## Actions
 
-
+<p>&nbsp;</p><div class="alert alert-warning">Module reference is taken from the source code. <a href="https://github.com/Codeception/Codeception/tree/2.0/src/Codeception/Module/Sequence.php">Help us to improve documentation. Edit module reference</a></div>

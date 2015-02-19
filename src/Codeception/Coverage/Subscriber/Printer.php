@@ -5,6 +5,7 @@ use Codeception\Events;
 use Codeception\Configuration;
 use Codeception\Event\PrintResultEvent;
 use Codeception\Subscriber\Shared\StaticEvents;
+use Codeception\Coverage\Filter;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 class Printer implements EventSubscriberInterface {
@@ -15,6 +16,7 @@ class Printer implements EventSubscriberInterface {
     ];
 
     protected $settings = [
+        'enabled' => true,
         'low_limit' => '35',
         'high_limit' => '70',
         'show_uncovered' => false
@@ -23,14 +25,28 @@ class Printer implements EventSubscriberInterface {
     static $coverage;
     protected $options;
     protected $logDir;
+    protected $destination = [];
 
     public function __construct($options)
     {
         $this->options = $options;
-        $this->logDir = Configuration::logDir();
+        $this->logDir = Configuration::outputDir();
         $this->settings = array_merge($this->settings, Configuration::config()['coverage']);
         self::$coverage = new \PHP_CodeCoverage();
 
+        // Apply filter
+        $filter = new Filter(self::$coverage);
+        $filter
+            ->whiteList(Configuration::config())
+            ->blackList(Configuration::config());
+    }
+
+    protected function absolutePath($path)
+    {
+        if ((strpos($path, '/') === 0) or (strpos($path, ':') === 1)) { // absolute path
+            return $path;
+        }
+        return $this->logDir . $path;
     }
 
     public function printResult(PrintResultEvent $e)
@@ -38,21 +54,35 @@ class Printer implements EventSubscriberInterface {
         if ($this->options['steps']) {
             return;
         }
+        $printer = $e->getPrinter();
+        if (!$this->settings['enabled']) {
+            $printer->write("\nCodeCoverage is disabled in `codeception.yml` config\n");
+            return;
+        }
 
-        $this->printText($e->getPrinter());
+        $this->printConsole($printer);
+        $printer->write("Remote CodeCoverage reports are not printed to console\n");
         $this->printPHP();
-        if ($this->options['html']) {
+        $printer->write("\n");
+        if ($this->options['coverage-html']) {
             $this->printHtml();
+            $printer->write("HTML report generated in {$this->options['coverage-html']}\n");
         }
-        if ($this->options['xml']) {
+        if ($this->options['coverage-xml']) {
             $this->printXml();
+            $printer->write("XML report generated in {$this->options['coverage-xml']}\n");
         }
+        if ($this->options['coverage-text']) {
+            $this->printText();
+            $printer->write("Text report generated in {$this->options['coverage-text']}\n");
+        }
+
     }
 
-    protected function printText(\PHPUnit_Util_Printer $printer)
+    protected function printConsole(\PHPUnit_Util_Printer $printer)
     {
-        $writer = new \PHP_CodeCoverage_Report_Text($printer,
-            $this->settings['low_limit'], $this->settings['high_limit'], $this->settings['show_uncovered']
+        $writer = new \PHP_CodeCoverage_Report_Text(
+            $this->settings['low_limit'], $this->settings['high_limit'], $this->settings['show_uncovered'], false
         );
         $printer->write($writer->process(self::$coverage, $this->options['colors']));
     }
@@ -60,8 +90,6 @@ class Printer implements EventSubscriberInterface {
     protected function printHtml()
     {
         $writer = new \PHP_CodeCoverage_Report_HTML(
-            'UTF-8',
-            true,
             $this->settings['low_limit'],
             $this->settings['high_limit'],
             sprintf(
@@ -70,19 +98,26 @@ class Printer implements EventSubscriberInterface {
             )
         );
 
-        $writer->process(self::$coverage, $this->logDir . 'coverage');
+        $writer->process(self::$coverage, $this->absolutePath($this->options['coverage-html']));
     }
 
     protected function printXml()
     {
         $writer = new \PHP_CodeCoverage_Report_Clover;
-        $writer->process(self::$coverage, $this->logDir . 'coverage.xml');
+        $writer->process(self::$coverage, $this->absolutePath($this->options['coverage-xml']));
     }
 
     protected function printPHP()
     {
         $writer = new \PHP_CodeCoverage_Report_PHP;
-        $writer->process(self::$coverage, $this->logDir. 'coverage.serialized');
+        $writer->process(self::$coverage, $this->absolutePath($this->options['coverage']));
     }
 
+    protected function printText()
+    {
+        $writer = new \PHP_CodeCoverage_Report_Text(
+            $this->settings['low_limit'], $this->settings['high_limit'], $this->settings['show_uncovered'], false
+        );
+        file_put_contents($this->absolutePath($this->options['coverage-text']), $writer->process(self::$coverage, false));
+    }
 }

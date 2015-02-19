@@ -5,10 +5,7 @@ namespace Codeception\Lib\Interfaces;
 interface Web
 {
     /**
-     * Opens the page.
-     * Requires relative uri as parameter
-     *
-     * Example:
+     * Opens the page for the given relative URI.
      *
      * ``` php
      * <?php
@@ -24,10 +21,8 @@ interface Web
     public function amOnPage($page);
 
     /**
-     * Check if current page contains the text specified.
-     * Specify the css selector to match only specific region.
-     *
-     * Examples:
+     * Checks that the current page contains the given string.
+     * Specify a locator as the second parameter to match a specific region.
      *
      * ``` php
      * <?php
@@ -43,10 +38,8 @@ interface Web
     public function see($text, $selector = null);
 
     /**
-     * Check if current page doesn't contain the text specified.
-     * Specify the css selector to match only specific region.
-     *
-     * Examples:
+     * Checks that the current page doesn't contain the text specified.
+     * Give a locator as the second parameter to match a specific region.
      *
      * ```php
      * <?php
@@ -62,23 +55,29 @@ interface Web
     public function dontSee($text, $selector = null);
 
     /**
-     * Submits a form located on page.
-     * Specify the form by it's css or xpath selector.
-     * Fill the form fields values as array.
+     * Submits the given form on the page, optionally with the given form values.
+     * Give the form fields values as an array.
      *
-     * Skipped fields will be filled by their values from page.
+     * Skipped fields will be filled by their values from the page.
      * You don't need to click the 'Submit' button afterwards.
      * This command itself triggers the request to form's action.
      *
+     * You can optionally specify what button's value to include
+     * in the request with the last parameter as an alternative to
+     * explicitly setting its value in the second parameter, as
+     * button values are not otherwise included in the request.
+     * 
      * Examples:
      *
      * ``` php
      * <?php
      * $I->submitForm('#login', array('login' => 'davert', 'password' => '123456'));
+     * // or
+     * $I->submitForm('#login', array('login' => 'davert', 'password' => '123456'), 'submitButtonName');
      *
      * ```
      *
-     * For sample Sign Up form:
+     * For example, given this sample "Sign Up" form:
      *
      * ``` html
      * <form action="/sign_up">
@@ -86,35 +85,43 @@ interface Web
      *     Password: <input type="password" name="user[password]" /><br/>
      *     Do you agree to out terms? <input type="checkbox" name="user[agree]" /><br/>
      *     Select pricing plan <select name="plan"><option value="1">Free</option><option value="2" selected="selected">Paid</option></select>
-     *     <input type="submit" value="Submit" />
+     *     <input type="submit" name="submitButton" value="Submit" />
      * </form>
      * ```
-     * I can write this:
+     *
+     * You could write the following to submit it:
      *
      * ``` php
      * <?php
-     * $I->submitForm('#userForm', array('user' => array('login' => 'Davert', 'password' => '123456', 'agree' => true)));
+     * $I->submitForm('#userForm', array('user' => array('login' => 'Davert', 'password' => '123456', 'agree' => true)), 'submitButton');
      *
      * ```
-     * Note, that pricing plan will be set to Paid, as it's selected on page.
+     * Note that "2" will be the submitted value for the "plan" field, as it is the selected option.
+     * 
+     * You can also emulate a JavaScript submission by not specifying any buttons in the third parameter to submitForm.
+     * 
+     * ```php
+     * <?php
+     * $I->submitForm('#userForm', array('user' => array('login' => 'Davert', 'password' => '123456', 'agree' => true)));
+     * 
+     * ```
      *
      * @param $selector
      * @param $params
+     * @param $button
      */
-    public function submitForm($selector, $params);
+    public function submitForm($selector, $params, $button = null);
 
     /**
-     * Perform a click on link or button.
-     * Link or button are found by their names or CSS selector.
-     * Submits a form if button is a submit type.
+     * Perform a click on a link or a button, given by a locator.
+     * If a fuzzy locator is given, the page will be searched for a button, link, or image matching the locator string.
+     * For buttons, the "value" attribute, "name" attribute, and inner text are searched.
+     * For links, the link text is searched.
+     * For images, the "alt" attribute and inner text of any parent links are searched.
      *
-     * If link is an image it's found by alt attribute value of image.
-     * If button is image button is found by it's value
-     * If link or button can't be found by name they are searched by CSS selector.
+     * The second parameter is a context (CSS or XPath locator) to narrow the search.
      *
-     * The second parameter is a context: CSS or XPath locator to narrow the search.
-     *
-     * Examples:
+     * Note that if the locator matches a button of type `submit`, the form will be submitted.
      *
      * ``` php
      * <?php
@@ -125,9 +132,11 @@ interface Web
      * // CSS button
      * $I->click('#form input[type=submit]');
      * // XPath
-     * $I->click('//form/*[@type=submit]')
+     * $I->click('//form/*[@type=submit]');
      * // link in context
      * $I->click('Logout', '#nav');
+     * // using strict locator
+     * $I->click(['link' => 'Login']);
      * ?>
      * ```
      *
@@ -137,10 +146,8 @@ interface Web
     public function click($link, $context = null);
 
     /**
-     * Checks if there is a link with text specified.
-     * Specify url to match link with exact this url.
-     *
-     * Examples:
+     * Checks that there's a link with the specified text.
+     * Give a full URL as the second parameter to match links with that exact URL.
      *
      * ``` php
      * <?php
@@ -155,24 +162,23 @@ interface Web
     public function seeLink($text, $url = null);
 
     /**
-     * Checks if page doesn't contain the link with text specified.
-     * Specify url to narrow the results.
-     *
-     * Examples:
+     * Checks that the page doesn't contain a link with the given string.
+     * If the second parameter is given, only links with a matching "href" attribute will be checked.
      *
      * ``` php
      * <?php
      * $I->dontSeeLink('Logout'); // I suppose user is not logged in
+     * $I->dontSeeLink('Checkout now', '/store/cart.php');
      * ?>
      * ```
      *
-     * @param      $text
+     * @param $text
      * @param null $url
      */
     public function dontSeeLink($text, $url = null);
 
     /**
-     * Checks that current uri contains a value
+     * Checks that current URI contains the given string.
      *
      * ``` php
      * <?php
@@ -188,8 +194,8 @@ interface Web
     public function seeInCurrentUrl($uri);
 
     /**
-     * Checks that current url is equal to value.
-     * Unlike `seeInCurrentUrl` performs a strict check.
+     * Checks that the current URL is equal to the given string.
+     * Unlike `seeInCurrentUrl`, this only matches the full URL.
      *
      * ``` php
      * <?php
@@ -203,7 +209,7 @@ interface Web
     public function seeCurrentUrlEquals($uri);
 
     /**
-     * Checks that current url is matches a RegEx value
+     * Checks that the current URL matches the given regular expression.
      *
      * ``` php
      * <?php
@@ -217,7 +223,7 @@ interface Web
     public function seeCurrentUrlMatches($uri);
 
     /**
-     * Checks that current uri does not contain a value
+     * Checks that the current URI doesn't contain the given string.
      *
      * ``` php
      * <?php
@@ -230,8 +236,8 @@ interface Web
     public function dontSeeInCurrentUrl($uri);
 
     /**
-     * Checks that current url is not equal to value.
-     * Unlike `dontSeeInCurrentUrl` performs a strict check.
+     * Checks that the current URL doesn't equal the given string.
+     * Unlike `dontSeeInCurrentUrl`, this only matches the full URL.
      *
      * ``` php
      * <?php
@@ -245,7 +251,7 @@ interface Web
     public function dontSeeCurrentUrlEquals($uri);
 
     /**
-     * Checks that current url does not match a RegEx value
+     * Checks that current url doesn't match the given regular expression.
      *
      * ``` php
      * <?php
@@ -259,8 +265,8 @@ interface Web
     public function dontSeeCurrentUrlMatches($uri);
 
     /**
-     * Takes a parameters from current URI by RegEx.
-     * If no url provided returns full URI.
+     * Executes the given regular expression against the current URI and returns the first match.
+     * If no parameters are provided, the full URI is returned.
      *
      * ``` php
      * <?php
@@ -277,10 +283,7 @@ interface Web
     public function grabFromCurrentUrl($uri = null);
 
     /**
-     * Assert if the specified checkbox is checked.
-     * Use css selector or xpath to match.
-     *
-     * Example:
+     * Checks that the specified checkbox is checked.
      *
      * ``` php
      * <?php
@@ -295,10 +298,7 @@ interface Web
     public function seeCheckboxIsChecked($checkbox);
 
     /**
-     * Assert if the specified checkbox is unchecked.
-     * Use css selector or xpath to match.
-     *
-     * Example:
+     * Check that the specified checkbox is unchecked.
      *
      * ``` php
      * <?php
@@ -312,10 +312,8 @@ interface Web
     public function dontSeeCheckboxIsChecked($checkbox);
 
     /**
-     * Checks that an input field or textarea contains value.
-     * Field is matched either by label or CSS or Xpath
-     *
-     * Example:
+     * Checks that the given input field or textarea contains the given value. 
+     * For fuzzy locators, fields are matched by label text, the "name" attribute, CSS, and XPath.
      *
      * ``` php
      * <?php
@@ -324,6 +322,7 @@ interface Web
      * $I->seeInField('form input[type=hidden]','hidden_value');
      * $I->seeInField('#searchform input','Search');
      * $I->seeInField('//form/*[@name=search]','Search');
+     * $I->seeInField(['name' => 'search'], 'Search');
      * ?>
      * ```
      *
@@ -333,9 +332,8 @@ interface Web
     public function seeInField($field, $value);
 
     /**
-     * Checks that an input field or textarea doesn't contain value.
-     * Field is matched either by label or CSS or Xpath
-     * Example:
+     * Checks that an input field or textarea doesn't contain the given value.
+     * For fuzzy locators, the field is matched by label text, CSS and XPath.
      *
      * ``` php
      * <?php
@@ -344,6 +342,7 @@ interface Web
      * $I->dontSeeInField('form input[type=hidden]','hidden_value');
      * $I->dontSeeInField('#searchform input','Search');
      * $I->dontSeeInField('//form/*[@name=search]','Search');
+     * $I->dontSeeInField(['name' => 'search'], 'Search');
      * ?>
      * ```
      *
@@ -353,9 +352,7 @@ interface Web
     public function dontSeeInField($field, $value);
 
     /**
-     * Selects an option in select tag or in radio button group.
-     *
-     * Example:
+     * Selects an option in a select tag or in radio button group.
      *
      * ``` php
      * <?php
@@ -365,7 +362,7 @@ interface Web
      * ?>
      * ```
      *
-     * Can select multiple options if second argument is array:
+     * Provide an array for the second argument to select multiple options:
      *
      * ``` php
      * <?php
@@ -379,10 +376,7 @@ interface Web
     public function selectOption($select, $option);
 
     /**
-     * Ticks a checkbox.
-     * For radio buttons use `selectOption` method.
-     *
-     * Example:
+     * Ticks a checkbox. For radio buttons, use the `selectOption` method instead.
      *
      * ``` php
      * <?php
@@ -397,8 +391,6 @@ interface Web
     /**
      * Unticks a checkbox.
      *
-     * Example:
-     *
      * ``` php
      * <?php
      * $I->uncheckOption('#notify');
@@ -410,13 +402,12 @@ interface Web
     public function uncheckOption($option);
 
     /**
-     * Fills a text field or textarea with value.
-     *
-     * Example:
+     * Fills a text field or textarea with the given string.
      *
      * ``` php
      * <?php
      * $I->fillField("//input[@type='text']", "Hello World!");
+     * $I->fillField(['name' => 'email'], 'jon@mail.com');
      * ?>
      * ```
      *
@@ -426,9 +417,7 @@ interface Web
     public function fillField($field, $value);
 
     /**
-     * Attaches file from Codeception data directory to upload field.
-     *
-     * Example:
+     * Attaches a file relative to the Codeception data directory to the given file upload field.
      *
      * ``` php
      * <?php
@@ -443,16 +432,14 @@ interface Web
     public function attachFile($field, $filename);
 
     /**
-     * Finds and returns text contents of element.
-     * Element is searched by CSS selector, XPath or matcher by regex.
-     *
-     * Example:
+     * Finds and returns the text contents of the given element.
+     * If a fuzzy locator is used, the element is found using CSS, XPath, and by matching the full page source by regular expression.
      *
      * ``` php
      * <?php
      * $heading = $I->grabTextFrom('h1');
      * $heading = $I->grabTextFrom('descendant-or-self::h1');
-     * $value = $I->grabTextFrom('~<input value=(.*?)]~sgi');
+     * $value = $I->grabTextFrom('~<input value=(.*?)]~sgi'); // match with a regex
      * ?>
      * ```
      *
@@ -463,16 +450,15 @@ interface Web
     public function grabTextFrom($cssOrXPathOrRegex);
 
     /**
-     * Finds and returns field and returns it's value.
-     * Searches by field name, then by CSS, then by XPath
-     *
-     * Example:
+     * Finds the value for the given form field.
+     * If a fuzzy locator is used, the field is found by field name, CSS, and XPath.
      *
      * ``` php
      * <?php
      * $name = $I->grabValueFrom('Name');
      * $name = $I->grabValueFrom('input[name=username]');
      * $name = $I->grabValueFrom('descendant-or-self::form/descendant::input[@name = 'username']');
+     * $name = $I->grabValueFrom(['name' => 'username']);
      * ?>
      * ```
      *
@@ -482,38 +468,83 @@ interface Web
      */
     public function grabValueFrom($field);
 
+
     /**
-     * Checks if element exists on a page, matching it by CSS or XPath
+     * Grabs the value of the given attribute value from the given element.
+     * Fails if element is not found.
+     *
+     * ``` php
+     * <?php
+     * $I->grabAttributeFrom('#tooltip', 'title');
+     * ?>
+     * ```
+     *
+     *
+     * @param $cssOrXpath
+     * @param $attribute
+     * @internal param $element
+     * @return mixed
+     */
+    public function grabAttributeFrom($cssOrXpath, $attribute);
+
+    /**
+     * Checks that the given element exists on the page and is visible.
+     * You can also specify expected attributes of this element.
      *
      * ``` php
      * <?php
      * $I->seeElement('.error');
      * $I->seeElement('//form/input[1]');
+     * $I->seeElement('input', ['name' => 'login']);
+     * $I->seeElement('input', ['value' => '123456']);
+     *
+     * // strict locator in first arg, attributes in second
+     * $I->seeElement(['css' => 'form input'], ['name' => 'login']);
      * ?>
      * ```
      *
      * @param $selector
+     * @param array $attributes
+     * @return
      */
-    public function seeElement($selector);
+    public function seeElement($selector, $attributes = array());
 
     /**
-     * Checks if element does not exist (or is visible) on a page, matching it by CSS or XPath
-     *
-     * Example:
+     * Checks that the given element is invisible or not present on the page.
+     * You can also specify expected attributes of this element.
      *
      * ``` php
      * <?php
      * $I->dontSeeElement('.error');
      * $I->dontSeeElement('//form/input[1]');
+     * $I->dontSeeElement('input', ['name' => 'login']);
+     * $I->dontSeeElement('input', ['value' => '123456']);
      * ?>
      * ```
      *
      * @param $selector
+     * @param array $attributes
      */
-    public function dontSeeElement($selector);
+    public function dontSeeElement($selector, $attributes = array());
 
+   /**
+     * Checks that there are a certain number of elements matched by the given locator on the page.
+     * 
+     * ``` php
+     * <?php
+     * $I->seeNumberOfElements('tr', 10);
+     * $I->seeNumberOfElements('tr', [0,10]); //between 0 and 10 elements
+     * ?>
+     * ```
+     * @param $selector
+     * @param mixed $expected:
+     * - string: strict number
+     * - array: range of numbers [0,10]  
+     */
+    public function seeNumberOfElements($selector, $expected);    
+    
     /**
-     * Checks if option is selected in select field.
+     * Checks that the given option is selected.
      *
      * ``` php
      * <?php
@@ -529,7 +560,7 @@ interface Web
     public function seeOptionIsSelected($selector, $optionText);
 
     /**
-     * Checks if option is not selected in select field.
+     * Checks that the given option is not selected.
      *
      * ``` php
      * <?php
@@ -545,7 +576,7 @@ interface Web
     public function dontSeeOptionIsSelected($selector, $optionText);
 
     /**
-     * Checks that page title contains text.
+     * Checks that the page title contains the given string.
      *
      * ``` php
      * <?php
@@ -560,7 +591,7 @@ interface Web
     public function seeInTitle($title);
 
     /**
-     * Checks that page title does not contain text.
+     * Checks that the page title does not contain the given string.
      *
      * @param $title
      *
@@ -569,48 +600,71 @@ interface Web
     public function dontSeeInTitle($title);
 
     /**
-     * Checks that cookie is set.
+     * Checks that a cookie with the given name is set.
+     * You can set additional cookie params like `domain`, `path` as array passed in last argument.
+     *
+     * ``` php
+     * <?php
+     * $I->seeCookie('PHPSESSID');
+     * ?>
+     * ```
      *
      * @param $cookie
-     *
+     * @param array $params
      * @return mixed
      */
-    public function seeCookie($cookie);
+    public function seeCookie($cookie, array $params = []);
 
     /**
-     * Checks that cookie doesn't exist
+     * Checks that there isn't a cookie with the given name.
+     * You can set additional cookie params like `domain`, `path` as array passed in last argument.
      *
      * @param $cookie
      *
+     * @param array $params
      * @return mixed
      */
-    public function dontSeeCookie($cookie);
+    public function dontSeeCookie($cookie, array $params = []);
 
     /**
-     * Sets a cookie.
+     * Sets a cookie with the given name and value.
+     * You can set additional cookie params like `domain`, `path`, `expire`, `secure` in array passed as last argument.
      *
-     * @param $cookie
-     * @param $value
+     * ``` php
+     * <?php
+     * $I->setCookie('PHPSESSID', 'el4ukv0kqbvoirg7nkp4dncpk3');
+     * ?>
+     * ```
+     *
+     * @param $name
+     * @param $val
+     * @param array $params
+     * @internal param $cookie
+     * @internal param $value
      *
      * @return mixed
      */
-    public function setCookie($cookie, $value);
+    public function setCookie($name, $val, array $params = []);
 
     /**
-     * Unsets cookie
+     * Unsets cookie with the given name.
+     * You can set additional cookie params like `domain`, `path` in array passed as last argument.
      *
      * @param $cookie
      *
+     * @param array $params
      * @return mixed
      */
-    public function resetCookie($cookie);
+    public function resetCookie($cookie, array $params = []);
 
     /**
      * Grabs a cookie value.
+     * You can set additional cookie params like `domain`, `path` in array passed as last argument.
      *
      * @param $cookie
      *
+     * @param array $params
      * @return mixed
      */
-    public function grabCookie($cookie);
+    public function grabCookie($cookie, array $params = []);
 }

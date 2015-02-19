@@ -2,55 +2,32 @@
 
 namespace Codeception\TestCase;
 
+use Codeception\Configuration;
 use Codeception\Events;
 use Codeception\Event\TestEvent;
 use Codeception\Exception\TestRuntime;
-use Codeception\Scenario;
 use Codeception\SuiteManager;
 use Codeception\TestCase;
 
-class Test extends TestCase
+class Test extends TestCase implements
+    Interfaces\Descriptive,
+    Interfaces\Configurable
 {
-    /**
-     * @var \Symfony\Component\EventDispatcher\EventDispatcher
-     */
-    protected $dispatcher = null;
-    protected $bootstrap = null;
-
-    /**
-     * @var \CodeGuy
-     */
-    protected $codeGuy = null;
-
-    protected $guyClass;
-
-    public function setDispatcher($dispatcher)
-    {
-        $this->dispatcher = $dispatcher;
-    }
-
-    public function setBootstrap($bootstrap)
-    {
-        $this->bootstrap = $bootstrap;
-    }
-
-    public function setGuyClass($guy)
-    {
-        $this->guyClass = $guy;
-    }
+    use Shared\Actor;
+    use Shared\Dependencies;
 
     protected function setUp()
     {
-        if ($this->bootstrap) {
-            require $this->bootstrap;
+        $actor = $this->actor;
+        if ($actor) {
+            $property = lcfirst(Configuration::config()['actor']);
+            $this->$property = new $actor($this->scenario);
+
+            // BC compatibility hook
+            $actorProperty = lcfirst($actor);
+            $this->$actorProperty = $this->$property;
         }
-        $this->scenario = new Scenario($this);
-        $guy            = $this->guyClass;
-        if ($guy) {
-            $property      = lcfirst($guy);
-            $this->codeGuy = $this->$property = new $guy($this->scenario);
-        }
-        $this->scenario->run();
+        $this->getScenario()->run();
         $this->fire(Events::TEST_BEFORE, new TestEvent($this));
         $this->_before();
     }
@@ -75,18 +52,22 @@ class Test extends TestCase
     {
     }
 
-    public function __construct($name = null, array $data = array(), $dataName = '')
-    {
-        parent::__construct($name, $data, $dataName);
-        $this->scenario = new Scenario($this);
-    }
-
     public function getFeature()
     {
         $text = $this->getName();
         $text = preg_replace('/([A-Z]+)([A-Z][a-z])/', '\\1 \\2', $text);
         $text = preg_replace('/([a-z\d])([A-Z])/', '\\1 \\2', $text);
         return strtolower($text);
+    }
+
+    public function getSignature()
+    {
+        return get_class($this).'::'.$this->getName(false);
+    }
+
+    public function getFileName()
+    {
+        return (new \ReflectionClass($this))->getFileName();
     }
 
     /**

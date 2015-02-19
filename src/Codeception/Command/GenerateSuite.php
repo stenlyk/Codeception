@@ -7,17 +7,23 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Yaml\Yaml;
+use Symfony\Component\Console\Command\Command;
 
 
 /**
  * Create new test suite. Requires suite name and actor name
  *
- * `codecept g:suite api Api` -> api + ApiGuy
- * `codecept g:suite frontend Front` -> frontend + FrontGuy
+ * * ``
+ * * `codecept g:suite api` -> api + ApiTester
+ * * `codecept g:suite integration Code` -> integration + CodeTester
+ * * `codecept g:suite frontend Front` -> frontend + FrontTester
  *
  */
-class GenerateSuite extends Base
+class GenerateSuite extends Command
 {
+    use Shared\FileSystem;
+    use Shared\Config;
+
     protected function configure()
     {
         $this->setDefinition(
@@ -39,6 +45,11 @@ class GenerateSuite extends Base
         $suite = lcfirst($input->getArgument('suite'));
         $actor = $input->getArgument('actor');
 
+        if ($this->containsInvalidCharacters ($suite)) {
+            $output->writeln("<error>Suite name '$suite' contains invalid characters. ([A-Za-z0-9_]).</error>");
+            return;
+        }
+
         $config = \Codeception\Configuration::config($input->getOption('config'));
         if (!$actor) {
             $actor = ucfirst($suite) . $config['actor'];
@@ -46,9 +57,6 @@ class GenerateSuite extends Base
         $config['class_name'] = $actor;
 
         $dir = \Codeception\Configuration::testsDir();
-        if (file_exists($dir . $suite)) {
-            throw new \Exception("Directory $suite already exists.");
-        }
         if (file_exists($dir . $suite . '.suite.yml')) {
             throw new \Exception("Suite configuration file '$suite.suite.yml' already exists.");
         }
@@ -57,7 +65,7 @@ class GenerateSuite extends Base
 
         // generate bootstrap
         $this->save($dir . $suite . DIRECTORY_SEPARATOR . '_bootstrap.php',
-            "<?php\n// Here you can initialize variables that will for your tests\n",
+            "<?php\n// Here you can initialize variables that will be available to your tests\n",
             true
         );
         $actorName = $this->removeSuffix($actor, $config['actor']);
@@ -79,4 +87,10 @@ class GenerateSuite extends Base
 
         $output->writeln("<info>Suite $suite generated</info>");
     }
+
+    private function containsInvalidCharacters ($suite)
+    {
+        return preg_match ('#[^A-Za-z0-9_]#', $suite) ? true : false;
+    }
+
 }

@@ -29,7 +29,7 @@ use Codeception\Lib\Interfaces\ActiveRecord;
  * ## Status
  *
  * Maintainer: **qiangxue**
- * Stability: **beta**
+ * Stability: **stable**
  *
  */
 class Yii2 extends Framework implements ActiveRecord
@@ -75,7 +75,7 @@ class Yii2 extends Framework implements ActiveRecord
         }
 
         if (Yii::$app) {
-            Yii::$app->session->close();
+            Yii::$app->session->destroy();
         }
 
 
@@ -105,7 +105,7 @@ class Yii2 extends Framework implements ActiveRecord
             $this->fail("Record $model was not saved");
         }
 
-        return $record->id;
+        return $record->primaryKey;
     }
 
     /**
@@ -176,11 +176,27 @@ class Yii2 extends Framework implements ActiveRecord
             throw new \RuntimeException("Model $model does not exist");
         }
         $record = new $model;
-        if (!$record instanceof \yii\db\ActiveRecord) {
-            throw new \RuntimeException("Model $model is not instance of \\yii\\db\\ActiveRecord");
+        if (!$record instanceof \yii\db\ActiveRecordInterface) {
+            throw new \RuntimeException("Model $model is not implement interface \\yii\\db\\ActiveRecordInterface");
         }
         return $record;
     }
 
+
+    /**
+     *  Converting $page to valid Yii2 url
+     *  Allows input like:
+     *  $I->amOnPage(['site/view','page'=>'about']);
+     *  $I->amOnPage('index-test.php?site/index');
+     *  $I->amOnPage('http://localhost/index-test.php?site/index');
+     */
+    public function amOnPage($page) {
+                
+        if(is_array($page)){
+            $page = \Yii::$app->getUrlManager()->createUrl($page);
+        }
+
+        parent::amOnPage($page);
+    }
 
 }

@@ -20,10 +20,10 @@ class MySql extends Db
         $this->dbh->exec('SET FOREIGN_KEY_CHECKS=1;');
     }
 
-    public function select($column, $table, array $criteria)
-    {
-        $where  = $criteria ? "where %s" : '';
-        $query  = "select %s from `%s` $where";
+    public function select($column, $table, array &$criteria) {
+        $where = $criteria ? "where %s" : '';
+        $table = $this->getQuotedName($table);
+        $query = "select %s from %s $where";
         $params = array();
         foreach ($criteria as $k => $v) {
             $k = $this->getQuotedName($k);
@@ -40,6 +40,6 @@ class MySql extends Db
 
     public function getQuotedName($name)
     {
-        return '`' . $name . '`';
+        return '`' . str_replace('.', '`.`', $name) . '`';
     }
 }

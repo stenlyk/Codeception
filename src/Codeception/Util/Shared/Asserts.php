@@ -51,11 +51,19 @@ trait Asserts
     }
 
     /**
-     * Checks that expected is greater then actual
+     * Checks that expected is greater than actual
      *
      * @param        $expected
      * @param        $actual
      * @param string $message
+     */
+    protected function assertGreaterThan($expected, $actual, $message = '')
+    {
+        \PHPUnit_Framework_Assert::assertGreaterThan($expected, $actual, $message);
+    }
+
+    /**
+     * @deprecated
      */
     protected function assertGreaterThen($expected, $actual, $message = '')
     {
@@ -63,16 +71,49 @@ trait Asserts
     }
 
     /**
-     * Checks that expected is greater or equal then actual
+     * Checks that expected is greater or equal than actual
      *
      * @param        $expected
      * @param        $actual
      * @param string $message
      */
+    protected function assertGreaterThanOrEqual($expected, $actual, $message = '')
+    {
+        \PHPUnit_Framework_Assert::assertGreaterThanOrEqual($expected, $actual, $message);
+    }
+
+    /**
+     * @deprecated
+     */
     protected function assertGreaterThenOrEqual($expected, $actual, $message = '')
     {
         \PHPUnit_Framework_Assert::assertGreaterThanOrEqual($expected, $actual, $message);
     }
+
+    /**
+     * Checks that expected is less than actual
+     *
+     * @param        $expected
+     * @param        $actual
+     * @param string $message
+     */
+    protected function assertLessThan($expected, $actual, $message = '')
+    {
+        \PHPUnit_Framework_Assert::assertLessThan($expected, $actual, $message);
+    }
+
+    /**
+     * Checks that expected is less or equal than actual
+     *
+     * @param        $expected
+     * @param        $actual
+     * @param string $message
+     */
+    protected function assertLessThanOrEqual($expected, $actual, $message = '')
+    {
+        \PHPUnit_Framework_Assert::assertLessThanOrEqual($expected, $actual, $message);
+    }
+
 
     /**
      * Checks that haystack contains needle
@@ -186,4 +227,4 @@ trait Asserts
     }
 
 
-} 
+}

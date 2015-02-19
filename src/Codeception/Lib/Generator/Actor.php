@@ -19,8 +19,10 @@ class Actor
 /**
  * Inherited Methods
 {{inheritedMethods}}
+ *
+ * @SuppressWarnings(PHPMD)
 */
-class {{guy}} extends \Codeception\Actor
+class {{actor}} extends \Codeception\Actor
 {
    {{methods}}
 }
@@ -69,7 +71,8 @@ EOF;
             if (in_array($action, $methods)) {
                 continue;
             }
-            $method = new \ReflectionMethod($this->modules[$moduleName], $action);
+            $class = new \ReflectionClass($this->modules[$moduleName]);
+            $method = $class->getMethod($action);
             $code[] = $this->addMethod($method);
             $methods[] = $action;
             $this->numMethods++;
@@ -79,7 +82,7 @@ EOF;
             ->place('namespace', $namespace ? "namespace $namespace;" : '')
             ->place('hash', self::genHash($this->actions, $this->settings))
             ->place('use', implode("\n", $uses))
-            ->place('guy', $this->settings['class_name'])
+            ->place('actor', $this->settings['class_name'])
             ->place('methods', implode("\n\n ", $code))
             ->place('inheritedMethods', $this->prependAbstractGuyDocBlocks())
             ->produce();
@@ -87,7 +90,7 @@ EOF;
 
     public static function genHash($actions, $settings)
     {
-        return md5(Codecept::VERSION.serialize($actions).serialize($settings));
+        return md5(Codecept::VERSION.serialize($actions).serialize($settings['modules']));
     }
 
     protected function addMethod(\ReflectionMethod $refMethod)
@@ -218,7 +221,7 @@ EOF;
         return implode("\n", $inherited);
     }
 
-    public function getGuy()
+    public function getActorName()
     {
         return $this->settings['class_name'];
     }

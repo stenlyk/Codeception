@@ -7,22 +7,22 @@ class Cest {
     use Shared\Classname;
     use Shared\Namespaces;
 
-    protected $template  = <<<EOF
+    protected $template = <<<EOF
 <?php
 {{namespace}}
 
 class {{name}}Cest
 {
-    public function _before()
+    public function _before({{actor}} \$I)
     {
     }
 
-    public function _after()
+    public function _after({{actor}} \$I)
     {
     }
 
     // tests
-    public function tryToTest({{guy}} \$I)
+    public function tryToTest({{actor}} \$I)
     {
     }
 }
@@ -39,15 +39,15 @@ EOF;
 
     public function produce()
     {
-        $guy = $this->settings['class_name'];
+        $actor = $this->settings['class_name'];
         $ns = $this->getNamespaceString($this->settings['namespace'].'\\'.$this->name);
-        $ns .= "use ".$this->settings['namespace'].'\\'.$guy.";";
+        $ns .= "use ".$this->settings['namespace'].'\\'.$actor.";";
 
         return (new Template($this->template))
             ->place('name', $this->getShortClassName($this->name))
             ->place('namespace', $ns)
-            ->place('guy', $guy)
+            ->place('actor', $actor)
             ->produce();
     }
 
-} 
+}

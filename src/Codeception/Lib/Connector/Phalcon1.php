@@ -2,6 +2,7 @@
 
 namespace Codeception\Lib\Connector;
 
+use Codeception\Lib\Connector\Shared\PhpSuperGlobalsConverter;
 use Symfony\Component\BrowserKit\Request,
     Symfony\Component\BrowserKit\Response,
     Symfony\Component\BrowserKit\Cookie,
@@ -11,6 +12,8 @@ use Symfony\Component\BrowserKit\Request,
 
 class Phalcon1 extends Client
 {
+    use Shared\PhpSuperGlobalsConverter;
+
     private $application;
 
     /**
@@ -59,21 +62,21 @@ class Phalcon1 extends Client
         }
 
         $_COOKIE                   = $request->getCookies();
-        $_FILES                    = $request->getFiles();
+        $_FILES                    = $this->remapFiles($request->getFiles());
         $_SERVER['REQUEST_METHOD'] = strtoupper($request->getMethod());
+        $_REQUEST = $this->remapRequestParameters($request->getParameters());
         if (strtoupper($request->getMethod()) == 'GET') {
-            $_GET = $request->getParameters();
+            $_GET = $_REQUEST;
         } else {
-            $_POST = $request->getParameters();
+            $_POST = $_REQUEST;
         }
-        $_REQUEST                = $request->getParameters();
         $uri                     = str_replace('http://localhost', '', $request->getUri());
         $_SERVER['REQUEST_URI']  = $uri;
         $_GET['_url']            = strtok($uri, '?');
         $_SERVER['QUERY_STRING'] = http_build_query($_GET);
         $_SERVER['REMOTE_ADDR']  = '127.0.0.1';
 
-        $di['request'] = Stub::make($di->get('request'), array('getRawBody' => $request->getContent()));
+        $di['request'] = Stub::construct($di->get('request'), [], array('getRawBody' => $request->getContent()));
 
         $response = $application->handle();
 
@@ -158,7 +161,7 @@ class PhalconMemorySession extends \Phalcon\Session\Adapter implements \Phalcon\
         return $this->isStarted;
     }
 
-    public function destroy()
+    public function destroy($session_id = NULL)
     {
         $this->isStarted = false;
         $this->data      = array();

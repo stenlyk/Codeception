@@ -13,13 +13,17 @@ abstract class SuiteSubscriber implements EventSubscriberInterface {
     use StaticEvents;
 
     protected $defaultSettings = [
-        'enabled' => true,
+        'enabled' => false,
         'remote' => false,
         'local' => false,
         'xdebug_session' => 'codeception',
-        'remote_config'  => null
+        'remote_config'  => null,
+        'show_uncovered' => false,
+        'c3_url' => null
     ];
+
     protected $settings = [];
+    protected $filters = [];
 
     protected $coverage;
     protected $logDir;
@@ -31,7 +35,7 @@ abstract class SuiteSubscriber implements EventSubscriberInterface {
     function __construct($options = [])
     {
         $this->options = $options;
-        $this->logDir = Configuration::logDir();
+        $this->logDir = Configuration::outputDir();
     }
 
     protected function applySettings($settings)
@@ -41,6 +45,7 @@ abstract class SuiteSubscriber implements EventSubscriberInterface {
         }
         $this->coverage = new \PHP_CodeCoverage();
 
+        $this->filters = $settings;
         $this->settings = $this->defaultSettings;
         $keys = array_keys($this->defaultSettings);
         foreach ($keys as $key) {
@@ -48,6 +53,7 @@ abstract class SuiteSubscriber implements EventSubscriberInterface {
                 $this->settings[$key] = $settings['coverage'][$key];
             }
         }
+        $this->coverage->setProcessUncoveredFilesFromWhitelist($this->settings['show_uncovered']);
     }
 
     /**
@@ -68,8 +74,8 @@ abstract class SuiteSubscriber implements EventSubscriberInterface {
         $result->setCodeCoverage(new DummyCodeCoverage());
 
         Filter::setup($this->coverage)
-            ->whiteList($this->settings)
-            ->blackList($this->settings);
+            ->whiteList($this->filters)
+            ->blackList($this->filters);
 
         $result->setCodeCoverage($this->coverage);
     }

@@ -7,17 +7,21 @@ use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Command\Command;
 
 
 /**
  * Generates skeleton for unit test as in classical PHPUnit.
  *
- * `codecept g:phpunit unit UserTest`
- * `codecept g:phpunit unit User`
- * `codecept g:phpunit unit "App\User"`
+ * * `codecept g:phpunit unit UserTest`
+ * * `codecept g:phpunit unit User`
+ * * `codecept g:phpunit unit "App\User`
  *
  */
-class GeneratePhpUnit extends Base {
+class GeneratePhpUnit extends Command
+{
+    use Shared\FileSystem;
+    use Shared\Config;
 
     protected function configure()
     {

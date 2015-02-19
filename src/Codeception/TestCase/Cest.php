@@ -6,24 +6,38 @@ use Codeception\Events;
 use Codeception\Event\TestEvent;
 use Codeception\Util\Annotation;
 
-class Cest extends Cept
+class Cest extends \Codeception\TestCase implements
+    Interfaces\ScenarioDriven,
+    Interfaces\Descriptive,
+    Interfaces\Reported,
+    Interfaces\Configurable
 {
+    use Shared\Actor;
+    use Shared\Dependencies;
+    use Shared\ScenarioPrint;
+
     protected $testClassInstance = null;
     protected $testMethod = null;
-    protected $guy;
 
-    public function __construct($dispatcher, array $data = array(), $dataName = '')
+    public function __construct(array $data = array(), $dataName = '')
     {
-        parent::__construct($dispatcher, $data, $dataName);
-        $this->testClassInstance = $data['instance'];
-        $this->testMethod        = $data['method'];
-        $this->guy               = $data['guy'];
+        parent::__construct('testCodecept', $data, $dataName);
+    }
+
+    public function getName($withDataSet = TRUE)
+    {
+        return $this->testMethod;
     }
 
     public function preload()
     {
         $this->scenario->setFeature($this->getSpecFromMethod());
-        parent::preload();
+        $code = $this->getRawBody();
+        $params = (new \ReflectionMethod($this->testClassInstance, $this->testMethod))->getParameters();
+        $scenarioVar = isset($params[1]) ? $params[1]->getName() : null;
+        $this->parser->parseFeature($code);
+        $this->parser->parseScenarioOptions($code, $scenarioVar);
+        $this->fire(Events::TEST_PARSED, new TestEvent($this));
     }
 
     public function getRawBody()
@@ -39,37 +53,49 @@ class Cest extends Cept
     {
         $this->fire(Events::TEST_BEFORE, new TestEvent($this));
 
-        if (file_exists($this->bootstrap)) {
-            require $this->bootstrap;
-        }
-
         $this->scenario->run();
         $I = $this->makeIObject();
 
         try {
             $this->executeBefore($this->testMethod, $I);
             $this->executeTestMethod($I);
-        } catch (\Exception $e) {
             $this->executeAfter($this->testMethod, $I);
+        } catch (\Exception $e) {
+            if (is_callable([$this->testClassInstance, '_failed'])) {
+                $this->testClassInstance->_failed($I);
+            }
             // fails and errors are now handled by Codeception\PHPUnit\Listener
             throw $e;
         }
-        $this->executeAfter($this->testMethod, $I);
 
         $this->fire(Events::TEST_AFTER, new TestEvent($this));
     }
 
     protected function executeBefore($testMethod, $I)
     {
-        if ($before = Annotation::forClass($this->testClassInstance)->method($testMethod)->fetch('before')) {
-            $this->executeContextMethod($before, $I);
+        if (is_callable([$this->testClassInstance, '_before'])) {
+            $this->testClassInstance->_before($I);
+        }
+
+        $annotations = \PHPUnit_Util_Test::parseTestMethodAnnotations(get_class($this->testClassInstance), $testMethod);
+        if (!empty($annotations['method']['before'])) {
+            foreach ($annotations['method']['before'] as $m) {
+                $this->executeContextMethod(trim($m), $I);
+            }
         }
     }
 
     protected function executeAfter($testMethod, $I)
     {
-        if ($after = Annotation::forClass($this->testClassInstance)->method($testMethod)->fetch('after')) {
-            $this->executeContextMethod($after, $I);
+        $annotations = \PHPUnit_Util_Test::parseTestMethodAnnotations(get_class($this->testClassInstance), $testMethod);
+        if (!empty($annotations['method']['after'])) {
+            foreach ($annotations['method']['after'] as $m) {
+                $this->executeContextMethod(trim($m), $I);
+            }
+        }
+
+        if (is_callable([$this->testClassInstance, '_after'])) {
+            $this->testClassInstance->_after($I);
         }
     }
 
@@ -91,13 +117,13 @@ class Cest extends Cept
 
     protected function makeIObject()
     {
-        $className = '\\' . $this->guy;
-        $I          = new $className($this->scenario);
+        $className = '\\' . $this->actor;
+        $I = new $className($this->scenario);
+        $spec = $this->getSpecFromMethod();
 
-        if ($spec = $this->getSpecFromMethod()) {
+        if ($spec) {
             $I->wantTo($spec);
         }
-
         return $I;
     }
 
@@ -129,9 +155,55 @@ class Cest extends Cept
         return $text;
     }
 
+    public function configActor($actor)
+    {
+        foreach (['actor', 'guy'] as $annotation) {
+            $definedActor = Annotation::forMethod($this->testClassInstance, $this->testMethod)->fetch($annotation);
+            if (!$definedActor) {
+                $definedActor = Annotation::forClass($this->testClassInstance)->fetch($annotation);
+            }
+            if ($definedActor) {
+                $this->actor = $definedActor;
+                return $this;
+            }
+        }
+
+        $this->actor = $actor;
+        return $this;
+    }
+
+    public function configEnv($env)
+    {
+        $this->testClassInstance->env = $env;
+        return $this;
+    }
+
+    public function getSignature()
+    {
+        return get_class($this->getTestClass()) . "::" . $this->getTestMethod();
+    }
+
     public function getFileName()
     {
-        $class = str_replace('\\', '.', get_class($this->getTestClass()));
-        return $class . "." . $this->getTestMethod();
+        return $this->testFile;
     }
+
+    public function toString()
+    {
+        return $this->getFeature(). " (".$this->getSignature().")";
+    }
+    
+    /**
+     * @return array
+     */
+    public function getReportFields()
+    {
+        return [
+            'file' => $this->getFileName(),
+            'name' => $this->getTestMethod(),
+            'class' => get_class($this->getTestClass()),
+            'feature' => $this->getFeature()
+        ];
+    }
+
 }

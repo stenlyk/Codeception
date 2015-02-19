@@ -247,7 +247,7 @@ class Stub
      * ?>
      * ```
      *
-     * To replace method provide it's name as a key in second parameter and it's return value or callback function as parameter
+     * To replace method provide it's name as a key in third parameter and it's return value or callback function as parameter
      *
      * ``` php
      * <?php
@@ -297,7 +297,7 @@ class Stub
      * ?>
      * ```
      *
-     * To replace method provide it's name as a key in second parameter and it's return value or callback function as parameter
+     * To replace method provide it's name as a key in third parameter and it's return value or callback function as parameter
      *
      * ``` php
      * <?php
@@ -351,7 +351,7 @@ class Stub
      * ?>
      * ```
      *
-     * To replace method provide it's name as a key in second parameter and it's return value or callback function as parameter
+     * To replace method provide it's name as a key in third parameter and it's return value or callback function as parameter
      *
      * ``` php
      * <?php
@@ -434,7 +434,7 @@ class Stub
     private static function doGenerateMock($args, $isAbstract = false)
     {
         $testCase   = self::extractTestCaseFromArgs($args);
-        $class      = $testCase instanceof \PHPUnit_Framework_TestCase ? $testCase : '\PHPUnit_Framework_MockObject_Generator';
+        $class      = $testCase instanceof \PHPUnit_Framework_TestCase ? $testCase : new \PHPUnit_Framework_MockObject_Generator;
         $methodName = $isAbstract ? 'getMockForAbstractClass' : 'getMock';
 
         $mock = call_user_func_array([$class, $methodName], $args);
@@ -453,7 +453,7 @@ class Stub
     }
 
     /**
-     * Replaces properties and methods of current stub
+     * Replaces properties of current stub
      *
      * @param \PHPUnit_Framework_MockObject_MockObject $mock
      * @param array                                    $params
@@ -494,6 +494,12 @@ class Stub
                         expects(new \PHPUnit_Framework_MockObject_Matcher_AnyInvokedCount)->
                         method($param)->
                         will(new \PHPUnit_Framework_MockObject_Stub_ReturnCallback($value));
+                } elseif ($value instanceof ConsecutiveMap) {
+                    $consecutiveMap = $value;
+                    $mock->
+                        expects(new \PHPUnit_Framework_MockObject_Matcher_AnyInvokedCount)->
+                        method($param)->
+                        will(new \PHPUnit_Framework_MockObject_Stub_ConsecutiveCalls($consecutiveMap->getMap()));
                 } else {
                     $mock->
                         expects(new \PHPUnit_Framework_MockObject_Matcher_AnyInvokedCount)->
@@ -657,6 +663,25 @@ class Stub
             return $params;
         }
     }
+
+    /**
+     * Stubbing a method call to return a list of values in the specified order.
+     *
+     * ``` php
+     * <?php
+     * $user = Stub::make('User', array('getName' => Stub::consecutive('david', 'emma', 'sam', 'amy')));
+     * $user->getName(); //david
+     * $user->getName(); //emma
+     * $user->getName(); //sam
+     * $user->getName(); //amy
+     * ?>
+     * ```
+     *
+     * @return ConsecutiveMap
+     */
+    public static function consecutive(){
+        return new ConsecutiveMap(func_get_args());
+    }
 }
 
 /**
@@ -682,5 +707,23 @@ class StubMarshaler
     public function getValue()
     {
         return $this->methodValue;
+    }
+}
+
+/**
+ * Holds the Consecutive Map for matching
+ */
+class ConsecutiveMap
+{
+    private $consecutiveMap = array();
+
+    public function __construct(array $consecutiveMap)
+    {
+        $this->consecutiveMap = $consecutiveMap;
+    }
+
+    public function getMap()
+    {
+        return $this->consecutiveMap;
     }
 }

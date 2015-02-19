@@ -73,6 +73,7 @@ class ZF2 extends \Codeception\Lib\Framework
         $events->detach($this->application->getServiceManager()->get('SendResponseListener'));
 
         $this->client->setApplication($this->application);
+        $_SERVER['REQUEST_URI'] = '';
     }
 
     public function _after(\Codeception\TestCase $test) {
@@ -88,7 +89,10 @@ class ZF2 extends \Codeception\Lib\Framework
         if (Version::compareVersion('2.2.0') >= 0) {
             Placeholder\Registry::unsetRegistry();
         }
-
+        //Close the session, if any are open
+        if (session_status() == PHP_SESSION_ACTIVE) {
+            session_write_close();
+        }
         $this->queries = 0;
         $this->time = 0;
     }

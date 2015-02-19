@@ -2,6 +2,7 @@
 namespace Codeception\Command;
 
 use Codeception\Configuration;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -12,12 +13,14 @@ use Codeception\Lib\Generator\PageObject as PageObjectGenerator;
  * Generates PageObject. Can be generated either globally, or just for one suite.
  * If PageObject is generated globally it will act as UIMap, without any logic in it.
  *
- * `codecept g:page Login`
- * `codecept g:page Registration`
- * `codecept g:page acceptance Login`
+ * * `codecept g:page Login`
+ * * `codecept g:page Registration`
+ * * `codecept g:page acceptance Login`
  */
-class GeneratePageObject extends Base
+class GeneratePageObject extends Command
 {
+    use Shared\FileSystem;
+    use Shared\Config;
 
     protected function configure()
     {
@@ -68,7 +71,7 @@ class GeneratePageObject extends Base
     {
         $path = $this->buildPath(Configuration::projectDir().$config['paths']['tests'].'/_pages/', $class);
         $filename = $this->completeSuffix($class, 'Page');
-        $this->introduceAutoloader(Configuration::projectDir().$config['paths']['tests'].DIRECTORY_SEPARATOR.$config['settings']['bootstrap'],'Page','_pages');
+        $this->introduceAutoloader(Configuration::projectDir().$config['paths']['tests'].DIRECTORY_SEPARATOR.$config['settings']['bootstrap'], $config['namespace'], '_pages');
         return  $path.$filename;
     }
 
@@ -76,7 +79,7 @@ class GeneratePageObject extends Base
     {
         $path = $this->buildPath($config['path'].'/_pages/', $class);
         $filename = $this->completeSuffix($class, 'Page');
-        $this->introduceAutoloader($config['path'].DIRECTORY_SEPARATOR.$config['bootstrap'],'Page','_pages');
+        $this->introduceAutoloader($config['path'].DIRECTORY_SEPARATOR.$config['bootstrap'], $config['namespace'], '_pages');
         return  $path.$filename;
     }
 

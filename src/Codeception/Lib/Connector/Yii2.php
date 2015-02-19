@@ -3,7 +3,8 @@
 namespace Codeception\Lib\Connector;
 
 use Yii;
-use yii\helpers\Security;
+use yii\web\HttpException;
+use yii\base\ExitException;
 use yii\web\Response as YiiResponse;
 use Symfony\Component\BrowserKit\Cookie;
 use Symfony\Component\BrowserKit\Client;
@@ -12,6 +13,8 @@ use Codeception\Util\Debug;
 
 class Yii2 extends Client
 {
+    use Shared\PhpSuperGlobalsConverter;
+
     /**
      * @var string application config file
      */
@@ -43,14 +46,15 @@ class Yii2 extends Client
     {
         $_COOKIE  = $request->getCookies();
         $_SERVER  = $request->getServer();
-        $_FILES   = $request->getFiles();
-        $_REQUEST = $request->getParameters();
+        $_FILES   = $this->remapFiles($request->getFiles());
+        $_REQUEST = $this->remapRequestParameters($request->getParameters());
         $_POST    = $_GET = array();
 
         if (strtoupper($request->getMethod()) == 'GET') {
-            $_GET = $request->getParameters();
+            $_GET = $_REQUEST;
         } else {
-            $_POST = $request->getParameters();
+            $_POST = $_REQUEST;
+            $_POST[Yii::$app->getRequest()->methodParam] = $request->getMethod();
         }
 
         $uri = $request->getUri();
@@ -69,11 +73,31 @@ class Yii2 extends Client
 
         $app->getResponse()->on(YiiResponse::EVENT_AFTER_PREPARE, array($this, 'processResponse'));
 
+        // disabling logging. Logs are slowing test execution down
+        foreach ($app->log->targets as $target) {
+            $target->enabled = false;
+        }
+
         $this->headers    = array();
         $this->statusCode = null;
 
         ob_start();
-        $app->handleRequest($app->getRequest())->send();
+
+        try {
+            $app->handleRequest($app->getRequest())->send();
+        } catch (\Exception $e) {
+            if ($e instanceof HttpException) {
+                // we shouldn't discard existing output as PHPUnit preform output level verification since PHPUnit 4.2.
+                $app->errorHandler->discardExistingOutput = false;
+                $app->errorHandler->handleException($e);
+            } elseif ($e instanceof ExitException) {
+                // nothing to do
+            } else {
+                // for exceptions not related to Http, we pass them to Codeception
+                throw $e;
+            }
+        }
+
         $content = ob_get_clean();
 
         // catch "location" header and display it in debug, otherwise it would be handled
@@ -96,14 +120,14 @@ class Yii2 extends Client
         $cookies          = $response->getCookies();
 
         if ($request->enableCookieValidation) {
-            $validationKey = $request->getCookieValidationKey();
+            $validationKey = $request->cookieValidationKey;
         }
 
         foreach ($cookies as $cookie) {
             /** @var \yii\web\Cookie $cookie */
             $value = $cookie->value;
             if ($cookie->expire != 1 && isset($validationKey)) {
-                $value = Security::hashData(serialize($value), $validationKey);
+                $value = Yii::$app->security->hashData(serialize($value), $validationKey);
             }
             $c = new Cookie($cookie->name, $value, $cookie->expire, $cookie->path, $cookie->domain, $cookie->secure, $cookie->httpOnly);
             $this->getCookieJar()->set($c);

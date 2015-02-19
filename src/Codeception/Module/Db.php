@@ -10,7 +10,7 @@ namespace Codeception\Module;
  * Also provides actions to perform checks in database.
  *
  * In order to have your database populated with data you need a raw SQL dump.
- * Just put it in ``` tests/_data ``` dir (by default) and specify path to it in config.
+ * Just put it in `tests/_data` dir (by default) and specify path to it in config.
  * Next time after database is cleared all your data will be restored from dump.
  * Don't forget to include CREATE TABLE statements into it.
  *
@@ -116,7 +116,9 @@ class Db extends \Codeception\Module implements \Codeception\Lib\Interfaces\Db
             }
             $sql = file_get_contents(Configuration::projectDir() . $this->config['dump']);
             $sql = preg_replace('%/\*(?!!\d+)(?:(?!\*/).)*\*/%s', "", $sql);
-            $this->sql = explode("\n", $sql);
+            if( ! empty($sql)) {
+                $this->sql = explode("\n", $sql);
+            }
         }
 
         try {
@@ -160,6 +162,7 @@ class Db extends \Codeception\Module implements \Codeception\Lib\Interfaces\Db
                 $this->debug("coudn\'t delete record {$insertId['id']} from {$insertId['table']}");
             }
         }
+        $this->insertedIds = array();
     }
 
     protected function cleanup()
@@ -229,7 +232,13 @@ class Db extends \Codeception\Module implements \Codeception\Lib\Interfaces\Db
             $this->fail(sprintf("Record with %s couldn't be inserted into %s", json_encode($data), $table));
         }
 
-        $lastInsertId = (int) $this->driver->lastInsertId($table);
+        try {
+            $lastInsertId = (int) $this->driver->lastInsertId($table);
+        } catch (\PDOException $e) {
+            // ignore errors due to uncommon DB structure,
+            // such as tables without _id_seq in PGSQL
+            $lastInsertId = 0;
+        }
         $this->insertedIds[] = array('table' => $table, 'id' => $lastInsertId);
 
         return $lastInsertId;

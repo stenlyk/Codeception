@@ -8,24 +8,30 @@ use Codeception\Events;
 use Codeception\Configuration;
 use Codeception\Event\SuiteEvent;
 use Codeception\Event\TestEvent;
+use Codeception\Lib\Console\Output;
 use Codeception\Scenario;
 use Codeception\SuiteManager;
 use Codeception\TestCase\Cept;
+use Codeception\Util\Debug;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Helper\QuestionHelper;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Question\Question;
 
 /**
  * Try to execute test commands in run-time. You may try commands before writing the test.
  *
- * `codecept console acceptance` - starts acceptance suite environment. If you use WebDriver you can manipulate browser with Codeception commands.
+ * * `codecept console acceptance` - starts acceptance suite environment. If you use WebDriver you can manipulate browser with Codeception commands.
  */
-class Console extends Base
+class Console extends Command
 {
     protected $test;
     protected $codecept;
     protected $suite;
+    protected $output;
 
     protected function configure()
     {
@@ -55,17 +61,28 @@ class Console extends Base
 
         $options          = $input->getOptions();
         $options['debug'] = true;
-        $options['steps'] = true;
+        $options['silent'] = true;
+        $options['interactive'] = false;
+        $options['colors'] = true;
+
+        Debug::setOutput(new Output($options));
 
         $this->codecept = new Codecept($options);
         $dispatcher     = $this->codecept->getDispatcher();
+
+        $this->test     = (new Cept())
+            ->configDispatcher($dispatcher)
+            ->configName('')
+            ->config('file','')
+            ->initConfig();
+
         $suiteManager   = new SuiteManager($dispatcher, $suiteName, $settings);
+        $suiteManager->initialize();
         $this->suite    = $suiteManager->getSuite();
-        $this->test     = new Cept($dispatcher, array('name' => 'interactive', 'file' => 'interactive'));
 
         $scenario = new Scenario($this->test);
-        $guy      = $settings['class_name'];
-        $I        = new $guy($scenario);
+        $actor      = $settings['class_name'];
+        $I        = new $actor($scenario);
 
         $this->listenToSignals();
 
@@ -80,9 +97,9 @@ class Console extends Base
         $dispatcher->dispatch(Events::TEST_PARSED, new TestEvent($this->test));
         $dispatcher->dispatch(Events::TEST_BEFORE, new TestEvent($this->test));
 
-        $output->writeln("\n\n\$I = new {$settings['class_name']}(\$scenario);");
+        $output->writeln("\n\n<comment>\$I</comment> = new {$settings['class_name']}(\$scenario);");
         $scenario->run();
-        $this->executeCommands($output, $I, $settings['bootstrap']);
+        $this->executeCommands($input, $output, $I, $settings['bootstrap']);
 
         $dispatcher->dispatch(Events::TEST_AFTER, new TestEvent($this->test));
         $dispatcher->dispatch(Events::SUITE_AFTER, new SuiteEvent($this->suite));
@@ -90,16 +107,19 @@ class Console extends Base
         $output->writeln("<info>Bye-bye!</info>");
     }
 
-    protected function executeCommands(OutputInterface $output, Actor $I, $bootstrap)
+    protected function executeCommands(InputInterface $input, OutputInterface $output, $I, $bootstrap)
     {
-        $dialog = $this->getHelperSet()->get('dialog');
+        $dialog = new QuestionHelper();
 
         if (file_exists($bootstrap)) {
             require $bootstrap;
         }
 
         do {
-            $command = $dialog->ask($output, '$I->', null, array_keys(SuiteManager::$actions));
+            $question = new Question("<comment>\$I-></comment>");
+            $question->setAutocompleterValues(array_keys(SuiteManager::$actions));
+
+            $command = $dialog->ask($input, $output, $question);
             if ($command == 'actions') {
                 $output->writeln("<info>" . implode(' ', array_keys(SuiteManager::$actions)));
                 continue;
@@ -111,7 +131,10 @@ class Console extends Base
                 continue;
             }
             try {
-                eval("\$I->$command;");
+                $value = eval("return \$I->$command;");
+                if ($value and !is_object($value)) {
+                    codecept_debug($value);
+                }
             } catch (\PHPUnit_Framework_AssertionFailedError $fail) {
                 $output->writeln("<error>fail</error> " . $fail->getMessage());
             } catch (\Exception $e) {

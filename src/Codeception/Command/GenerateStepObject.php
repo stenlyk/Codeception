@@ -2,6 +2,7 @@
 namespace Codeception\Command;
 
 use Codeception\Lib\Generator\StepObject as StepObjectGenerator;
+use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -10,12 +11,15 @@ use Symfony\Component\Console\Output\OutputInterface;
 /**
  * Generates StepObject class. You will be asked for steps you want to implement.
  *
- * `codecept g:step acceptance AdminSteps`
- * `codecept g:step acceptance UserSteps --silent` - skip action questions
+ * * `codecept g:step acceptance AdminSteps`
+ * * `codecept g:step acceptance UserSteps --silent` - skip action questions
  *
  */
-class GenerateStepObject extends Base
+class GenerateStepObject extends Command
 {
+    use Shared\FileSystem;
+    use Shared\Config;
+
     protected function configure()
      {
          $this->setDefinition(array(
@@ -34,18 +38,18 @@ class GenerateStepObject extends Base
     {
         $suite = $input->getArgument('suite');
         $step = $input->getArgument('step');
-        $conf = $this->getSuiteConfig($suite, $input->getOption('config'));
+        $config = $this->getSuiteConfig($suite, $input->getOption('config'));
 
         $class = $this->getClassName($step);
         $class = $this->removeSuffix($class, 'Steps');
 
-        $path = $this->buildPath($conf['path'].'/_steps/', $class);
+        $path = $this->buildPath($config['path'].'/_steps/', $class);
         $filename = $this->completeSuffix($class, 'Steps');
         $filename = $path.$filename;
 
         $dialog = $this->getHelperSet()->get('dialog');
 
-        $gen = new StepObjectGenerator($conf, $class);
+        $gen = new StepObjectGenerator($config, $class);
 
         if (!$input->getOption('silent')) {
             do {
@@ -57,8 +61,8 @@ class GenerateStepObject extends Base
         }
 
         $res = $this->save($filename, $gen->produce());
-        
-        $this->introduceAutoloader($conf['path'].'/'.$conf['bootstrap'], 'Steps', '_steps');
+
+        $this->introduceAutoloader($config['path'].'/'.$config['bootstrap'], trim($config['namespace'].'\\'.$config['class_name'], '\\'), '_steps');
 
         if (!$res) {
             $output->writeln("<error>StepObject $filename already exists</error>");

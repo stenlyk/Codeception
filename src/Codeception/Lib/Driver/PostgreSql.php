@@ -7,17 +7,52 @@ class PostgreSql extends Db
 
     protected $connection = null;
 
+    public function load($sql)
+    {
+        $query           = '';
+        $delimiter       = ';';
+        $delimiterLength = 1;
+
+        $dollarsOpen = false;
+        foreach ($sql as $sqlLine) {
+            if (preg_match('/DELIMITER ([\;\$\|\\\\]+)/i', $sqlLine, $match)) {
+                $delimiter       = $match[1];
+                $delimiterLength = strlen($delimiter);
+                continue;
+            }
+
+            $parsed = trim($query) == '' && $this->sqlLine($sqlLine);
+            if ($parsed) {
+                continue;
+            }
+
+            if (strpos(trim($sqlLine), '$$') === 0) {
+                $dollarsOpen = !$dollarsOpen;
+            }
+
+            $query .= "\n" . rtrim($sqlLine);
+
+            if (!$dollarsOpen && substr($query, -1 * $delimiterLength, $delimiterLength) == $delimiter) {
+                $this->sqlToRun = substr($query, 0, -1 * $delimiterLength);
+                $this->sqlQuery($this->sqlToRun);
+                $query = "";
+            }
+        }
+    }
+
     public function cleanup()
     {
-        $tables    = $this->dbh->query(
-                               "SELECT 'DROP TABLE IF EXISTS \"' || tablename || '\" cascade;' FROM pg_tables WHERE schemaname = 'public';"
-        )->fetchAll();
-        $sequences = $this->dbh->query(
-                               "SELECT 'DROP SEQUENCE IF EXISTS \"' || relname || '\" cascade;' FROM pg_class WHERE relkind = 'S';"
-        )->fetchAll();
-        $types     = $this->dbh->query(
-                               "SELECT 'DROP TYPE IF EXISTS \"' || pg_type.typname || '\" cascade;' FROM pg_type JOIN pg_enum ON pg_enum.enumtypid = pg_type.oid GROUP BY pg_type.typname;"
-        )->fetchAll();
+        $tables = $this->dbh
+            ->query("SELECT 'DROP TABLE IF EXISTS \"' || tablename || '\" cascade;' FROM pg_tables WHERE schemaname = 'public';")
+            ->fetchAll();
+
+        $sequences = $this->dbh
+            ->query("SELECT 'DROP SEQUENCE IF EXISTS \"' || relname || '\" cascade;' FROM pg_class WHERE relkind = 'S';")
+            ->fetchAll();
+
+        $types  = $this->dbh
+            ->query("SELECT 'DROP TYPE IF EXISTS \"' || pg_type.typname || '\" cascade;' FROM pg_type JOIN pg_enum ON pg_enum.enumtypid = pg_type.oid GROUP BY pg_type.typname;")
+            ->fetchAll();
 
         $drops = array_merge($tables, $sequences, $types);
         if ($drops) {
@@ -64,7 +99,7 @@ class PostgreSql extends Db
         }
     }
 
-    public function select($column, $table, array $criteria)
+    public function select($column, $table, array &$criteria)
     {
         $where  = $criteria ? "where %s" : '';
         $query  = 'select %s from "%s" ' . $where;
@@ -91,6 +126,8 @@ class PostgreSql extends Db
 
     public function getQuotedName($name)
     {
-        return '"' . $name . '"';
+        $name = explode('.', $name);
+        $name = array_map(function($data) { return '"' . $data . '"'; }, $name);
+        return implode('.', $name);
     }
 }

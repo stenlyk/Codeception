@@ -28,10 +28,9 @@ class ErrorHandler implements EventSubscriberInterface
     {
         $settings = $e->getSettings();
         if ($settings['error_level']) {
-            $this->errorLevel = eval("return {$settings['error_level']};");
+            $this->errorLevel = $settings['error_level'];
         }
-        error_reporting($this->errorLevel);
-        set_exception_handler(array($this, 'errorHandler'));
+        error_reporting(eval("return {$this->errorLevel};"));
         set_error_handler(array($this, 'errorHandler'));
         register_shutdown_function(array($this, 'shutdownHandler'));
     }
@@ -46,7 +45,8 @@ class ErrorHandler implements EventSubscriberInterface
         if (strpos($errstr, 'Cannot modify header information') !== false) {
             return false;
         }
-        throw new \ErrorException($errstr, 0, $errno, $errfile, $errline);
+
+        throw new \PHPUnit_Framework_Exception($errstr, $errno);
     }
 
     public function shutdownHandler()

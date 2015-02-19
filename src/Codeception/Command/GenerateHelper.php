@@ -6,14 +6,18 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Command\Command;
 
 /**
  * Creates empty Helper class.
  *
- * `codecept g:helper MyHelper`
+ * * `codecept g:helper MyHelper`
  *
  */
-class GenerateHelper extends Base {
+class GenerateHelper extends Command
+{
+    use Shared\FileSystem;
+    use Shared\Config;
 
     protected function configure()
     {

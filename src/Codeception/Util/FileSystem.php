@@ -3,7 +3,8 @@
 namespace Codeception\Util;
 
 /**
- * Set of functions to work with filesystem
+ * Set of functions to work with Filesystem
+ *
  */
 class FileSystem
 {
@@ -20,7 +21,7 @@ class FileSystem
 
         foreach ($iterator as $path) {
             $basename = basename((string)$path);
-            if ($basename === '.' || $basename === '..' || $basename !== '.gitignore') {
+            if ($basename === '.' || $basename === '..' || $basename === '.gitignore') {
                 continue;
             }
 
